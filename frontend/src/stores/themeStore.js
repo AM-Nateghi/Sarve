@@ -4,53 +4,68 @@ import { persist } from 'zustand/middleware';
 const useThemeStore = create(
   persist(
     (set, get) => ({
-      // حالت تم (light یا dark)
-      theme: 'light',
+      // حالت تم: 'light' | 'dark' | 'system'
+      theme: 'system',
 
-      // تغییر به Dark Mode
-      setDarkMode: () => {
-        set({ theme: 'dark' });
-        document.documentElement.classList.add('dark');
+      // Apply theme to DOM
+      applyTheme: (theme) => {
+        const root = document.documentElement;
+
+        if (theme === 'system') {
+          const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (systemPrefersDark) {
+            root.classList.add('dark');
+          } else {
+            root.classList.remove('dark');
+          }
+        } else if (theme === 'dark') {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
       },
 
-      // تغییر به Light Mode
-      setLightMode: () => {
-        set({ theme: 'light' });
-        document.documentElement.classList.remove('dark');
+      // تنظیم تم
+      setTheme: (newTheme) => {
+        set({ theme: newTheme });
+        get().applyTheme(newTheme);
       },
 
       // تغییر (Toggle) بین Light و Dark
       toggleTheme: () => {
         const currentTheme = get().theme;
+        let nextTheme;
+
         if (currentTheme === 'light') {
-          get().setDarkMode();
+          nextTheme = 'dark';
+        } else if (currentTheme === 'dark') {
+          nextTheme = 'system';
         } else {
-          get().setLightMode();
+          nextTheme = 'light';
         }
+
+        get().setTheme(nextTheme);
       },
 
-      // تنظیم تم بر اساس مقدار دلخواه
-      setTheme: (theme) => {
-        if (theme === 'dark') {
-          get().setDarkMode();
-        } else {
-          get().setLightMode();
-        }
-      },
-
-      // بررسی اینکه آیا Dark Mode فعال است
-      isDark: () => get().theme === 'dark',
+      // بررسی اینکه آیا Dark Mode فعال است (واقعی نه تنظیمات)
+      isDark: () => document.documentElement.classList.contains('dark'),
     }),
     {
       name: 'sarve-theme',
       // بارگذاری تم از localStorage هنگام شروع
       onRehydrateStorage: () => (state) => {
         if (state) {
-          if (state.theme === 'dark') {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
+          state.applyTheme(state.theme);
+
+          // Listen for system theme changes when in system mode
+          const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+          const handleChange = () => {
+            if (state.theme === 'system') {
+              state.applyTheme('system');
+            }
+          };
+
+          mediaQuery.addEventListener('change', handleChange);
         }
       },
     }

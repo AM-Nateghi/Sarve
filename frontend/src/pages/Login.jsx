@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import authService from '../services/authService';
 import useAuthStore from '../stores/authStore';
 import { validateEmail } from '../utils/validators';
+import PageTransition from '../components/PageTransition';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -50,7 +51,8 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-light-bg dark:bg-dark-bg px-4">
+    <PageTransition>
+      <div className="min-h-screen flex items-center justify-center bg-light-bg dark:bg-dark-bg px-4">
       <div className="max-w-md w-full space-y-8">
         {/* Logo */}
         <div className="text-center">
@@ -128,6 +130,7 @@ const Login = () => {
         </div>
       </div>
     </div>
+    </PageTransition>
   );
 };
 

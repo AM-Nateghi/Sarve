@@ -4,23 +4,14 @@
    Theme Configuration (Tailwind v4)
    ======================================== */
 @theme {
-  /* Light mode colors (using light-dark()) */
-  --color-light-bg: light-dark(#FFFFFF, #0F172A);
-  --color-light-bg-secondary: light-dark(#F9FAFB, #1E293B);
-  --color-light-bg-tertiary: light-dark(#F3F4F6, #334155);
-  --color-light-text: light-dark(#111827, #F8FAFC);
-  --color-light-text-secondary: light-dark(#6B7280, #CBD5E1);
-  --color-light-text-tertiary: light-dark(#9CA3AF, #94A3B8);
-  --color-light-border: light-dark(#E5E7EB, #475569);
-
-  /* Dark mode colors (using light-dark()) */
-  --color-dark-bg: light-dark(#0F172A, #0F172A);
-  --color-dark-bg-secondary: light-dark(#1E293B, #1E293B);
-  --color-dark-bg-tertiary: light-dark(#334155, #334155);
-  --color-dark-text: light-dark(#F8FAFC, #F8FAFC);
-  --color-dark-text-secondary: light-dark(#CBD5E1, #CBD5E1);
-  --color-dark-text-tertiary: light-dark(#94A3B8, #94A3B8);
-  --color-dark-border: light-dark(#475569, #475569);
+  /* Light mode colors */
+  --color-light-bg: #FFFFFF;
+  --color-light-bg-secondary: #F9FAFB;
+  --color-light-bg-tertiary: #F3F4F6;
+  --color-light-text: #111827;
+  --color-light-text-secondary: #6B7280;
+  --color-light-text-tertiary: #9CA3AF;
+  --color-light-border: #E5E7EB;
 
   /* Primary green color (accent) */
   --color-primary-50: #F0FDF4;
@@ -45,7 +36,7 @@
   --color-label-gray: #6B7280;
 
   /* Font Family */
-  --font-family-estedad: 'Estedad', sans-serif;
+  --font-estedad: 'Estedad', sans-serif;
 
   /* Animations */
   --animate-float-subtle: float-subtle 3s ease-in-out infinite;
@@ -53,6 +44,19 @@
 
   /* Box Shadow */
   --shadow-float: 0 8px 24px rgba(34, 197, 94, 0.15);
+}
+
+/* Dark mode colors */
+.dark {
+  @theme {
+    --color-dark-bg: #0F172A;
+    --color-dark-bg-secondary: #1E293B;
+    --color-dark-bg-tertiary: #334155;
+    --color-dark-text: #F8FAFC;
+    --color-dark-text-secondary: #CBD5E1;
+    --color-dark-text-tertiary: #94A3B8;
+    --color-dark-border: #475569;
+  }
 }
 
 /* Estedad Variable Font */
