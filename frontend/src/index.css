@@ -1,5 +1,60 @@
 @import "tailwindcss";
 
+/* ========================================
+   Theme Configuration (Tailwind v4)
+   ======================================== */
+@theme {
+  /* Light mode colors (using light-dark()) */
+  --color-light-bg: light-dark(#FFFFFF, #0F172A);
+  --color-light-bg-secondary: light-dark(#F9FAFB, #1E293B);
+  --color-light-bg-tertiary: light-dark(#F3F4F6, #334155);
+  --color-light-text: light-dark(#111827, #F8FAFC);
+  --color-light-text-secondary: light-dark(#6B7280, #CBD5E1);
+  --color-light-text-tertiary: light-dark(#9CA3AF, #94A3B8);
+  --color-light-border: light-dark(#E5E7EB, #475569);
+
+  /* Dark mode colors (using light-dark()) */
+  --color-dark-bg: light-dark(#0F172A, #0F172A);
+  --color-dark-bg-secondary: light-dark(#1E293B, #1E293B);
+  --color-dark-bg-tertiary: light-dark(#334155, #334155);
+  --color-dark-text: light-dark(#F8FAFC, #F8FAFC);
+  --color-dark-text-secondary: light-dark(#CBD5E1, #CBD5E1);
+  --color-dark-text-tertiary: light-dark(#94A3B8, #94A3B8);
+  --color-dark-border: light-dark(#475569, #475569);
+
+  /* Primary green color (accent) */
+  --color-primary-50: #F0FDF4;
+  --color-primary-100: #DCFCE7;
+  --color-primary-200: #BBF7D0;
+  --color-primary-300: #86EFAC;
+  --color-primary-400: #4ADE80;
+  --color-primary-500: #22C55E;
+  --color-primary-600: #16A34A;
+  --color-primary-700: #15803D;
+  --color-primary-800: #166534;
+  --color-primary-900: #14532D;
+
+  /* Label colors */
+  --color-label-red: #EF4444;
+  --color-label-orange: #F97316;
+  --color-label-yellow: #EAB308;
+  --color-label-green: #22C55E;
+  --color-label-blue: #3B82F6;
+  --color-label-purple: #A855F7;
+  --color-label-pink: #EC4899;
+  --color-label-gray: #6B7280;
+
+  /* Font Family */
+  --font-family-estedad: 'Estedad', sans-serif;
+
+  /* Animations */
+  --animate-float-subtle: float-subtle 3s ease-in-out infinite;
+  --animate-typewriter: typewriter 2s steps(40) 1s 1 normal both;
+
+  /* Box Shadow */
+  --shadow-float: 0 8px 24px rgba(34, 197, 94, 0.15);
+}
+
 /* Estedad Variable Font */
 @font-face {
   font-family: 'Estedad';
@@ -7,6 +62,25 @@
   font-weight: 100 900;
   font-display: swap;
   src: url('https://github.com/aminabedi68/Estedad/raw/master/fonts/webfonts/Estedad-VF.woff2') format('woff2-variations');
+}
+
+/* Keyframes */
+@keyframes float-subtle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes typewriter {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
 }
 
 @layer base {
