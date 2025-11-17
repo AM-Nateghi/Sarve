@@ -125,20 +125,33 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+
+// Swagger (فعال در همه محیط‌ها)
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Sarve API v1");
-        options.RoutePrefix = string.Empty; // Swagger UI at root
-    });
-}
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Sarve API v1");
+    options.RoutePrefix = "swagger"; // Swagger UI در /swagger
+});
 
 app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Root endpoint
+app.MapGet("/", () => Results.Json(new
+{
+    message = "به API سَروِ خوش آمدید!",
+    version = "1.0.0 (MVP)",
+    swagger = "/swagger",
+    endpoints = new
+    {
+        auth = "/api/auth",
+        tasks = "/api/tasks",
+        sections = "/api/sections"
+    }
+})).WithTags("Info");
 
 app.MapControllers();
 
