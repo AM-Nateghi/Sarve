@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estedad Variable Font */
+@font-face {
+  font-family: 'Estedad';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('https://github.com/aminabedi68/Estedad/raw/master/fonts/webfonts/Estedad-VF.woff2') format('woff2-variations');
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-estedad antialiased;
+    @apply bg-light-bg dark:bg-dark-bg;
+    @apply text-light-text dark:text-dark-text;
+    @apply min-h-screen;
+    direction: rtl;
+  }
+
+  /* Remove default margins */
+  h1, h2, h3, h4, h5, h6, p {
+    @apply m-0;
+  }
+}
+
+@layer components {
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-light-bg-secondary dark:bg-dark-bg-secondary;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-light-border dark:bg-dark-border rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-light-text-tertiary dark:bg-dark-text-tertiary;
+  }
+}
+
+@layer utilities {
+  /* Text utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Custom transitions */
+  .transition-page {
+    @apply transition-all duration-300 ease-in-out;
+  }
+}
