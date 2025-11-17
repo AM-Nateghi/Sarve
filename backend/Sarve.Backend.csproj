@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- LiteDB for database -->
+    <PackageReference Include="LiteDB" Version="5.0.21" />
+
+    <!-- JWT Authentication -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.0.0" />
+
+    <!-- Google OAuth -->
+    <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
+
+    <!-- BCrypt for password hashing -->
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+
+    <!-- Swagger for API documentation -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+
+    <!-- CORS support -->
+    <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.2.0" />
+
+    <!-- For file upload handling -->
+    <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
+  </ItemGroup>
+
+</Project>
