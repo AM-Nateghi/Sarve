@@ -22,12 +22,6 @@
 
     <!-- Swagger for API documentation -->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
-
-    <!-- CORS support -->
-    <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.2.0" />
-
-    <!-- For file upload handling -->
-    <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
   </ItemGroup>
 
 </Project>
