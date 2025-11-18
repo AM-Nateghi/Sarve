@@ -1,24 +1,22 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import apiClient from './apiClient';
 
 // دریافت API Key از backend
 let apiKey = null;
-let genAI = null;
-let model = null;
+let ai = null;
 
 const initializeGemini = async () => {
   if (!apiKey) {
     try {
       const response = await apiClient.get('/api/config/gemini-key');
       apiKey = response.data.apiKey;
-      genAI = new GoogleGenerativeAI(apiKey);
-      model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+      ai = new GoogleGenAI({ apiKey });
     } catch (error) {
       console.error('Failed to get Gemini API key:', error);
       throw new Error('خطا در دریافت تنظیمات AI');
     }
   }
-  return model;
+  return ai;
 };
 
 // Rate limiting tracker
@@ -56,7 +54,7 @@ const aiApi = {
     checkRateLimit();
 
     try {
-      const geminiModel = await initializeGemini();
+      const geminiAI = await initializeGemini();
 
       const prompt = `شما یک دستیار هوشمند برای مدیریت وظایف هستید. از متن زیر، وظایف را استخراج کنید و به صورت JSON بازگردانید.
 
@@ -80,9 +78,11 @@ const aiApi = {
 - اگر وظیفه‌ای نبود، آرایه خالی برگردان
 - فقط JSON بازگردان، بدون توضیح اضافی`;
 
-      const result = await geminiModel.generateContent(prompt);
-      const response = await result.response;
-      let jsonResponse = response.text().trim();
+      const response = await geminiAI.models.generateContent({
+        model: 'gemini-2.0-flash-exp',
+        contents: prompt,
+      });
+      let jsonResponse = response.text.trim();
 
       // پاک کردن markdown code blocks
       if (jsonResponse.startsWith('```json')) {
@@ -120,7 +120,7 @@ const aiApi = {
     checkRateLimit();
 
     try {
-      const geminiModel = await initializeGemini();
+      const geminiAI = await initializeGemini();
 
       const tasksJson = JSON.stringify(tasks, null, 2);
 
@@ -152,9 +152,11 @@ ${tasksJson}
     "patterns": ["..."]
 }`;
 
-      const result = await geminiModel.generateContent(prompt);
-      const response = await result.response;
-      let jsonResponse = response.text().trim();
+      const response = await geminiAI.models.generateContent({
+        model: 'gemini-2.0-flash-exp',
+        contents: prompt,
+      });
+      let jsonResponse = response.text.trim();
 
       // پاک کردن markdown code blocks
       if (jsonResponse.startsWith('```json')) {
