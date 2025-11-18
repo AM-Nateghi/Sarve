@@ -79,7 +79,7 @@ const aiApi = {
 - فقط JSON بازگردان، بدون توضیح اضافی`;
 
       const response = await geminiAI.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
+        model: 'gemini-2.5-flash',
         contents: prompt,
       });
       let jsonResponse = response.text.trim();
@@ -153,7 +153,7 @@ ${tasksJson}
 }`;
 
       const response = await geminiAI.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
+        model: 'gemini-2.5-flash',
         contents: prompt,
       });
       let jsonResponse = response.text.trim();
@@ -208,7 +208,7 @@ ${tasksJson}
       });
 
       const response = await geminiAI.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
+        model: 'gemini-2.5-flash',
         contents: [
           {
             parts: [
