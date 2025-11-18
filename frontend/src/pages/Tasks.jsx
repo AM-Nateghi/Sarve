@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MagnifyingGlassIcon,
@@ -7,9 +7,12 @@ import {
   ClockIcon,
   XMarkIcon,
   SparklesIcon,
+  PlusIcon,
+  FolderPlusIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import TaskCard from '../components/TaskCard';
+import SectionHeader from '../components/SectionHeader';
 import FloatingActionButton from '../components/FloatingActionButton';
 import Modal from '../components/Modal';
 import DatePicker from '../components/DatePicker';
@@ -25,6 +28,7 @@ import {
   useToggleTask,
 } from '../hooks/useTasks';
 import { useLabels } from '../hooks/useLabels';
+import { useSections, useCreateSection } from '../hooks/useSections';
 
 const PRIORITIES = [
   { value: 1, label: 'کم' },
@@ -41,42 +45,71 @@ const FILTERS = [
 
 const Tasks = () => {
   // React Query hooks
-  const { data: tasks = [], isLoading } = useTasks();
+  const { data: tasks = [], isLoading: tasksLoading } = useTasks();
+  const { data: sections = [], isLoading: sectionsLoading } = useSections();
   const { data: labels = [] } = useLabels();
   const createTaskMutation = useCreateTask();
   const updateTaskMutation = useUpdateTask();
   const deleteTaskMutation = useDeleteTask();
   const toggleTaskMutation = useToggleTask();
+  const createSectionMutation = useCreateSection();
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBy, setFilterBy] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [showAIExtractor, setShowAIExtractor] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState({});
+  const [newSectionName, setNewSectionName] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     priority: 2,
     dueDate: null,
     labelIds: [],
+    sectionId: 'default',
   });
 
-  // Filter tasks
-  const filteredTasks = tasks.filter((task) => {
-    const matchesSearch =
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (task.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+  // Group tasks by section
+  const groupedTasks = useMemo(() => {
+    const filtered = tasks.filter((task) => {
+      const matchesSearch =
+        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (task.description || '').toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesFilter =
-      filterBy === 'all'
-        ? true
-        : filterBy === 'active'
-        ? !task.isCompleted
-        : task.isCompleted;
+      const matchesFilter =
+        filterBy === 'all'
+          ? true
+          : filterBy === 'active'
+          ? !task.isCompleted
+          : task.isCompleted;
 
-    return matchesSearch && matchesFilter;
-  });
+      return matchesSearch && matchesFilter;
+    });
+
+    // Group by section
+    const groups = {};
+    sections.forEach((section) => {
+      groups[section.id] = [];
+    });
+
+    filtered.forEach((task) => {
+      const sectionId = task.sectionId || 'default';
+      if (groups[sectionId]) {
+        groups[sectionId].push(task);
+      }
+    });
+
+    // Sort tasks by order within each section
+    Object.keys(groups).forEach((sectionId) => {
+      groups[sectionId].sort((a, b) => a.order - b.order);
+    });
+
+    return groups;
+  }, [tasks, sections, searchQuery, filterBy]);
 
   // Stats
   const stats = {
@@ -85,15 +118,38 @@ const Tasks = () => {
     completed: tasks.filter((t) => t.isCompleted).length,
   };
 
+  const isLoading = tasksLoading || sectionsLoading;
+
+  // Section handlers
+  const toggleSectionCollapse = (sectionId) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
+
+  const handleCreateSection = async () => {
+    if (newSectionName.trim()) {
+      await createSectionMutation.mutateAsync({
+        name: newSectionName.trim(),
+        order: sections.length,
+      });
+      setNewSectionName('');
+      setIsSectionModalOpen(false);
+    }
+  };
+
   // Open modal for new task
-  const openNewTaskModal = () => {
+  const openNewTaskModal = (sectionId = 'default') => {
     setEditingTask(null);
+    setSelectedSectionId(sectionId);
     setFormData({
       title: '',
       description: '',
       priority: 2,
       dueDate: null,
       labelIds: [],
+      sectionId,
     });
     setIsModalOpen(true);
   };
@@ -107,6 +163,7 @@ const Tasks = () => {
       priority: task.priority,
       dueDate: task.deadline ? new Date(task.deadline) : null,
       labelIds: task.labelIds || [],
+      sectionId: task.sectionId || 'default',
     });
     setIsModalOpen(true);
   };
@@ -115,12 +172,14 @@ const Tasks = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingTask(null);
+    setSelectedSectionId(null);
     setFormData({
       title: '',
       description: '',
       priority: 2,
       dueDate: null,
       labelIds: [],
+      sectionId: 'default',
     });
   };
 
@@ -139,6 +198,7 @@ const Tasks = () => {
       priority: formData.priority,
       deadline: formData.dueDate ? formData.dueDate.toISOString() : null,
       labelIds: formData.labelIds,
+      sectionId: formData.sectionId,
     };
 
     try {
@@ -189,8 +249,16 @@ const Tasks = () => {
               </p>
             </div>
 
-            {/* Desktop AI Button */}
+            {/* Desktop Action Buttons */}
             <div className="hidden sm:flex items-center gap-2">
+              <button
+                onClick={() => setIsSectionModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white rounded-xl font-medium transition-all shadow-md hover:shadow-lg"
+                title="بخش جدید"
+              >
+                <FolderPlusIcon className="w-5 h-5" />
+                <span className="hidden md:inline">بخش جدید</span>
+              </button>
               <button
                 onClick={() => setShowAIExtractor(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all shadow-md hover:shadow-lg"
@@ -282,7 +350,7 @@ const Tasks = () => {
         </div>
       </div>
 
-      {/* Tasks List */}
+      {/* Tasks List - Grouped by Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {isLoading ? (
           <div className="space-y-3">
@@ -290,33 +358,85 @@ const Tasks = () => {
               <TaskSkeleton key={i} />
             ))}
           </div>
-        ) : filteredTasks.length === 0 ? (
+        ) : tasks.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
               <CheckCircleIcon className="w-10 h-10 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              {searchQuery ? 'نتیجه‌ای یافت نشد' : 'هنوز وظیفه‌ای ندارید'}
+              هنوز وظیفه‌ای ندارید
             </h3>
             <p className="text-gray-500 dark:text-gray-400">
-              {searchQuery
-                ? 'جستجوی دیگری امتحان کنید'
-                : 'برای شروع، یک وظیفه جدید اضافه کنید'}
+              برای شروع، یک وظیفه جدید اضافه کنید
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
-              {filteredTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  labels={labels}
-                  onClick={() => openEditModal(task)}
-                  onToggle={() => handleToggle(task.id)}
-                />
-              ))}
-            </AnimatePresence>
+          <div className="space-y-4">
+            {sections.map((section) => {
+              const sectionTasks = groupedTasks[section.id] || [];
+              const isCollapsed = collapsedSections[section.id];
+
+              // Don't show section if search/filter results in no tasks
+              if (searchQuery || filterBy !== 'all') {
+                if (sectionTasks.length === 0) return null;
+              }
+
+              return (
+                <motion.div
+                  key={section.id}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden"
+                >
+                  <SectionHeader
+                    section={section}
+                    taskCount={sectionTasks.length}
+                    isCollapsed={isCollapsed}
+                    onToggleCollapse={() => toggleSectionCollapse(section.id)}
+                    onAddTask={() => openNewTaskModal(section.id)}
+                  />
+
+                  {!isCollapsed && (
+                    <div className="p-3 space-y-2">
+                      {sectionTasks.length === 0 ? (
+                        <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
+                          این بخش خالی است
+                        </div>
+                      ) : (
+                        <AnimatePresence mode="popLayout">
+                          {sectionTasks.map((task) => (
+                            <TaskCard
+                              key={task.id}
+                              task={task}
+                              labels={labels}
+                              onClick={() => openEditModal(task)}
+                              onToggle={() => handleToggle(task.id)}
+                            />
+                          ))}
+                        </AnimatePresence>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+
+            {/* Show message if search/filter returns no results */}
+            {(searchQuery || filterBy !== 'all') &&
+             sections.every((s) => (groupedTasks[s.id] || []).length === 0) && (
+              <div className="text-center py-12">
+                <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                  <CheckCircleIcon className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  نتیجه‌ای یافت نشد
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  جستجوی دیگری امتحان کنید
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -433,6 +553,59 @@ const Tasks = () => {
         isOpen={showAIExtractor}
         onClose={() => setShowAIExtractor(false)}
       />
+
+      {/* Section Creation Modal */}
+      <Modal
+        isOpen={isSectionModalOpen}
+        onClose={() => {
+          setIsSectionModalOpen(false);
+          setNewSectionName('');
+        }}
+        title="بخش جدید"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+              نام بخش *
+            </label>
+            <input
+              type="text"
+              value={newSectionName}
+              onChange={(e) => setNewSectionName(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && newSectionName.trim()) {
+                  handleCreateSection();
+                }
+              }}
+              placeholder="مثلاً: کار، شخصی، مطالعه..."
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              autoFocus
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSectionModalOpen(false);
+                setNewSectionName('');
+              }}
+              className="flex-1 px-6 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium transition-colors"
+            >
+              لغو
+            </button>
+            <button
+              onClick={handleCreateSection}
+              disabled={!newSectionName.trim() || createSectionMutation.isPending}
+              className="flex-1 px-6 py-3 rounded-xl bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {createSectionMutation.isPending ? 'در حال ایجاد...' : 'ایجاد'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
