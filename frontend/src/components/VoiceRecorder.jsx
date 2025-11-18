@@ -1,73 +1,33 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import {
   MicrophoneIcon,
   StopIcon,
   PaperAirplaneIcon,
   XMarkIcon,
+  ArrowUpTrayIcon,
 } from '@heroicons/react/24/solid';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import aiApi from '../services/aiApi';
 
 const VoiceRecorder = ({ onTranscriptReady, onClose }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
-  const [transcript, setTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
 
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
-  const recognitionRef = useRef(null);
-
-  // راه‌اندازی Web Speech API برای تشخیص گفتار
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'fa-IR'; // فارسی
-
-      recognitionRef.current.onresult = (event) => {
-        let finalTranscript = '';
-        let interimTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript + ' ';
-          } else {
-            interimTranscript += transcript;
-          }
-        }
-
-        setTranscript((prev) => prev + finalTranscript || interimTranscript);
-      };
-
-      recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        if (event.error !== 'no-speech') {
-          toast.error('خطا در تشخیص گفتار');
-        }
-      };
-    }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, []);
+  const fileInputRef = useRef(null);
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus',
+      });
       chunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
@@ -86,21 +46,11 @@ const VoiceRecorder = ({ onTranscriptReady, onClose }) => {
       setIsRecording(true);
       setRecordingTime(0);
 
-      // شروع تایمر
       timerRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
 
-      // شروع تشخیص گفتار
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.start();
-        } catch (error) {
-          console.error('Recognition start error:', error);
-        }
-      }
-
-      toast.success('ضبط شروع شد');
+      toast.success('ضبط صوت شروع شد');
     } catch (error) {
       console.error('Error starting recording:', error);
       toast.error('خطا در دسترسی به میکروفون');
@@ -116,35 +66,46 @@ const VoiceRecorder = ({ onTranscriptReady, onClose }) => {
         clearInterval(timerRef.current);
       }
 
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (error) {
-          console.error('Recognition stop error:', error);
-        }
-      }
-
       toast.success('ضبط متوقف شد');
     }
   };
 
-  const handleSubmit = () => {
-    if (transcript.trim()) {
-      onTranscriptReady(transcript.trim());
-      setTranscript('');
-      setAudioBlob(null);
-      setRecordingTime(0);
-    } else {
-      toast.error('لطفاً ابتدا چیزی بگویید');
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.type.startsWith('audio/')) {
+        setAudioBlob(file);
+        toast.success('فایل صوتی بارگذاری شد');
+      } else {
+        toast.error('لطفاً یک فایل صوتی انتخاب کنید');
+      }
+    }
+  };
+
+  const handleTranscribe = async () => {
+    if (!audioBlob) {
+      toast.error('لطفاً ابتدا صوت را ضبط یا بارگذاری کنید');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const result = await aiApi.transcribeAudio(audioBlob);
+      if (result.success && result.text) {
+        onTranscriptReady(result.text);
+        onClose();
+      } else {
+        toast.error('متنی از صوت استخراج نشد');
+      }
+    } catch (error) {
+      console.error('Transcription error:', error);
+      toast.error(error.message || 'خطا در تبدیل صوت به متن');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleCancel = () => {
-    setTranscript('');
-    setAudioBlob(null);
-    setRecordingTime(0);
-    setIsRecording(false);
-
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
     }
@@ -153,14 +114,9 @@ const VoiceRecorder = ({ onTranscriptReady, onClose }) => {
       clearInterval(timerRef.current);
     }
 
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (error) {
-        console.error('Recognition stop error:', error);
-      }
-    }
-
+    setAudioBlob(null);
+    setRecordingTime(0);
+    setIsRecording(false);
     onClose();
   };
 
@@ -172,100 +128,154 @@ const VoiceRecorder = ({ onTranscriptReady, onClose }) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
       onClick={handleCancel}
     >
-      <div
-        className="bg-white dark:bg-dark-bg-secondary rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4"
+      <motion.div
+        initial={{ y: '100%', opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: '100%', opacity: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="bg-white dark:bg-dark-bg-secondary w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* هدر */}
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-light-text dark:text-dark-text">
-            ضبط صوتی
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            ضبط یا آپلود صوت
           </h3>
           <button
             onClick={handleCancel}
-            className="p-2 hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
           >
-            <XMarkIcon className="w-5 h-5 text-light-text dark:text-dark-text" />
+            <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
 
-        {/* نمایش زمان ضبط */}
-        {isRecording && (
-          <div className="text-center mb-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-900/30 rounded-full">
-              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-              <span className="font-mono text-lg font-bold text-red-600 dark:text-red-400">
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Recording Timer */}
+          {isRecording && (
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="flex flex-col items-center gap-4"
+            >
+              <div className="relative">
+                <div className="w-24 h-24 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <div className="w-6 h-6 bg-red-500 rounded-full animate-pulse" />
+                  </div>
+                </div>
+              </div>
+              <span className="font-mono text-3xl font-bold text-red-500">
                 {formatTime(recordingTime)}
               </span>
+              <p className="text-sm text-gray-500">در حال ضبط...</p>
+            </motion.div>
+          )}
+
+          {/* Audio Info */}
+          {audioBlob && !isRecording && (
+            <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+              <div className="w-10 h-10 rounded-full bg-primary-500/10 flex items-center justify-center flex-shrink-0">
+                <MicrophoneIcon className="w-5 h-5 text-primary-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  فایل صوتی آماده
+                </p>
+                <p className="text-xs text-gray-500">
+                  {recordingTime > 0 ? `${formatTime(recordingTime)}` : 'آپلود شده'}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* نمایش متن تشخیص داده شده */}
-        {transcript && (
-          <div className="mb-4 p-4 bg-light-bg-secondary dark:bg-dark-bg-tertiary rounded-lg border border-light-border dark:border-dark-border max-h-48 overflow-y-auto">
-            <p className="text-sm text-light-text dark:text-dark-text leading-relaxed text-right">
-              {transcript}
-            </p>
-          </div>
-        )}
-
-        {/* دکمه‌های کنترل */}
-        <div className="flex gap-3">
-          {!isRecording && !transcript && (
-            <button
-              onClick={startRecording}
-              className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-6 py-4 rounded-xl font-bold transition-colors"
-            >
-              <MicrophoneIcon className="w-6 h-6" />
-              <span>شروع ضبط</span>
-            </button>
           )}
 
-          {isRecording && (
-            <button
-              onClick={stopRecording}
-              className="flex-1 flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-4 rounded-xl font-bold transition-colors"
-            >
-              <StopIcon className="w-6 h-6" />
-              <span>توقف</span>
-            </button>
-          )}
+          {/* Actions */}
+          <div className="space-y-3">
+            {!isRecording && !audioBlob && (
+              <>
+                <button
+                  onClick={startRecording}
+                  className="w-full flex items-center justify-center gap-3 bg-red-500 hover:bg-red-600 text-white px-6 py-4 rounded-xl font-medium transition-all active:scale-95"
+                >
+                  <MicrophoneIcon className="w-5 h-5" />
+                  <span>شروع ضبط صوت</span>
+                </button>
 
-          {!isRecording && transcript && (
-            <>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white dark:bg-dark-bg-secondary text-gray-500">
+                      یا
+                    </span>
+                  </div>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-6 py-4 rounded-xl font-medium transition-all active:scale-95"
+                >
+                  <ArrowUpTrayIcon className="w-5 h-5" />
+                  <span>آپلود فایل صوتی</span>
+                </button>
+              </>
+            )}
+
+            {isRecording && (
               <button
-                onClick={handleCancel}
-                className="flex-1 flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-light-text dark:text-dark-text px-6 py-4 rounded-xl font-bold transition-colors"
+                onClick={stopRecording}
+                className="w-full flex items-center justify-center gap-3 bg-gray-900 dark:bg-gray-700 hover:bg-gray-800 dark:hover:bg-gray-600 text-white px-6 py-4 rounded-xl font-medium transition-all active:scale-95"
               >
-                <XMarkIcon className="w-6 h-6" />
-                <span>لغو</span>
+                <StopIcon className="w-5 h-5" />
+                <span>توقف ضبط</span>
               </button>
-              <button
-                onClick={handleSubmit}
-                disabled={isProcessing}
-                className="flex-1 flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-6 py-4 rounded-xl font-bold transition-colors disabled:opacity-50"
-              >
-                <PaperAirplaneIcon className="w-6 h-6" />
-                <span>ارسال</span>
-              </button>
-            </>
-          )}
-        </div>
+            )}
 
-        {/* راهنما */}
-        <div className="mt-4 text-xs text-light-text-tertiary dark:text-dark-text-tertiary text-center">
-          {isRecording
-            ? 'در حال ضبط... متن شما به صورت خودکار استخراج می‌شود'
-            : 'روی دکمه شروع ضبط کلیک کنید و وظایف خود را بیان کنید'}
+            {!isRecording && audioBlob && (
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCancel}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-3 rounded-xl font-medium transition-all active:scale-95"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                  <span>لغو</span>
+                </button>
+                <button
+                  onClick={handleTranscribe}
+                  disabled={isProcessing}
+                  className="flex-1 flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-3 rounded-xl font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>در حال پردازش...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PaperAirplaneIcon className="w-5 h-5" />
+                      <span>استخراج متن</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 };

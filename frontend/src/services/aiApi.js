@@ -188,6 +188,62 @@ ${tasksJson}
       throw error;
     }
   },
+
+  // تبدیل صوت به متن
+  transcribeAudio: async (audioBlob, retryCount = 0) => {
+    checkRateLimit();
+
+    try {
+      const geminiAI = await initializeGemini();
+
+      // تبدیل blob به base64
+      const reader = new FileReader();
+      const base64Audio = await new Promise((resolve, reject) => {
+        reader.onloadend = () => {
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(audioBlob);
+      });
+
+      const response = await geminiAI.models.generateContent({
+        model: 'gemini-2.0-flash-exp',
+        contents: [
+          {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: audioBlob.type || 'audio/webm',
+                  data: base64Audio,
+                },
+              },
+              {
+                text: 'لطفاً این فایل صوتی را به متن تبدیل کن. فقط متن را برگردان، بدون توضیح اضافی.',
+              },
+            ],
+          },
+        ],
+      });
+
+      const text = response.text.trim();
+
+      return {
+        success: true,
+        text: text,
+      };
+    } catch (error) {
+      console.error('Error transcribing audio:', error);
+
+      // Retry logic
+      if (retryCount < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return aiApi.transcribeAudio(audioBlob, retryCount + 1);
+      }
+
+      throw new Error(error.message || 'خطا در تبدیل صوت به متن');
+    }
+  },
 };
 
 export default aiApi;
