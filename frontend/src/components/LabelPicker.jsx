@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PlusIcon, XMarkIcon, TagIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
-import useTaskStore from '../stores/taskStore';
+import { useLabels, useCreateLabel } from '../hooks/useLabels';
 
 // رنگ‌های پیش‌فرض برای لیبل‌ها
 export const LABEL_COLORS = [
@@ -16,11 +16,10 @@ export const LABEL_COLORS = [
 ];
 
 const LabelPicker = ({ selectedLabels = [], onChange }) => {
-  const { getLabels, addLabel } = useTaskStore();
+  const { data: labels = [] } = useLabels();
+  const createLabelMutation = useCreateLabel();
   const [isCreating, setIsCreating] = useState(false);
   const [newLabel, setNewLabel] = useState({ name: '', color: 'blue' });
-
-  const labels = getLabels();
 
   const toggleLabel = (labelId) => {
     if (selectedLabels.includes(labelId)) {
@@ -30,14 +29,14 @@ const LabelPicker = ({ selectedLabels = [], onChange }) => {
     }
   };
 
-  const handleCreateLabel = (e) => {
+  const handleCreateLabel = async (e) => {
     e.preventDefault();
     if (newLabel.name.trim()) {
       const label = {
         name: newLabel.name.trim(),
         color: newLabel.color,
       };
-      addLabel(label);
+      await createLabelMutation.mutateAsync(label);
       setNewLabel({ name: '', color: 'blue' });
       setIsCreating(false);
     }

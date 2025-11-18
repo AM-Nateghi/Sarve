@@ -19,15 +19,15 @@ import {
   arrayMove,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import useTaskStore from '../stores/taskStore';
 import { AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import DatePicker from '../components/DatePicker';
-import Dropdown from '../components/Dropdown';
+import CustomDropdown from '../components/CustomDropdown';
 import SortableTaskItem from '../components/SortableTaskItem';
 import LabelPicker from '../components/LabelPicker';
 import TaskSkeleton from '../components/TaskSkeleton';
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useToggleTask } from '../hooks/useTasks';
 
 const PRIORITIES = [
   { value: 1, label: 'کم', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
@@ -49,7 +49,13 @@ const SORT_OPTIONS = [
 ];
 
 const Tasks = () => {
-  const { getTasks, toggleTaskComplete, addTask, deleteTask, updateTask, reorderTasks, isLoading } = useTaskStore();
+  // React Query hooks
+  const { data: tasks = [], isLoading } = useTasks();
+  const createTaskMutation = useCreateTask();
+  const updateTaskMutation = useUpdateTask();
+  const deleteTaskMutation = useDeleteTask();
+  const toggleTaskMutation = useToggleTask();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBy, setFilterBy] = useState('all');
   const [sortBy, setSortBy] = useState('date');
@@ -73,17 +79,15 @@ const Tasks = () => {
     labelIds: [],
   });
 
-  const allTasks = getTasks();
-
   // Filter tasks
-  const filteredTasks = allTasks.filter(task => {
+  const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (task.description || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesFilter =
       filterBy === 'all' ? true :
-      filterBy === 'active' ? !task.completed :
-      filterBy === 'completed' ? task.completed :
+      filterBy === 'active' ? !task.isCompleted :
+      filterBy === 'completed' ? task.isCompleted :
       true;
 
     return matchesSearch && matchesFilter;
@@ -102,12 +106,12 @@ const Tasks = () => {
 
   // Calculate stats
   const stats = {
-    total: allTasks.length,
-    completed: allTasks.filter(t => t.completed).length,
-    active: allTasks.filter(t => !t.completed).length,
+    total: tasks.length,
+    completed: tasks.filter(t => t.isCompleted).length,
+    active: tasks.filter(t => !t.isCompleted).length,
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!formData.title.trim()) {
@@ -115,20 +119,23 @@ const Tasks = () => {
       return;
     }
 
+    const taskData = {
+      title: formData.title.trim(),
+      description: formData.description?.trim() || null,
+      priority: formData.priority,
+      deadline: formData.dueDate ? formData.dueDate.toISOString() : null,
+      labelIds: formData.labelIds,
+      sectionId: 'default',
+    };
+
     if (editingTask) {
-      updateTask(editingTask.id, {
-        ...formData,
-        dueDate: formData.dueDate ? formData.dueDate.toISOString() : null,
+      await updateTaskMutation.mutateAsync({
+        id: editingTask.id,
+        data: taskData,
       });
-      toast.success('وظیفه به‌روزرسانی شد');
       setEditingTask(null);
     } else {
-      addTask({
-        ...formData,
-        dueDate: formData.dueDate ? formData.dueDate.toISOString() : null,
-        sectionId: 'default',
-      });
-      toast.success('وظیفه جدید اضافه شد');
+      await createTaskMutation.mutateAsync(taskData);
     }
 
     resetForm();
@@ -152,21 +159,20 @@ const Tasks = () => {
       title: task.title,
       description: task.description || '',
       priority: task.priority,
-      dueDate: task.dueDate ? new Date(task.dueDate) : null,
+      dueDate: task.deadline ? new Date(task.deadline) : null,
       labelIds: task.labelIds || [],
     });
     setIsModalOpen(true);
   };
 
-  const handleDelete = (taskId, taskTitle) => {
+  const handleDelete = async (taskId, taskTitle) => {
     if (window.confirm(`آیا از حذف وظیفه "${taskTitle}" اطمینان دارید؟`)) {
-      deleteTask(taskId);
-      toast.success('وظیفه حذف شد');
+      await deleteTaskMutation.mutateAsync(taskId);
     }
   };
 
   // مدیریت Drag & Drop
-  const handleDragEnd = (event) => {
+  const handleDragEnd = async (event) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
@@ -174,7 +180,16 @@ const Tasks = () => {
       const newIndex = sortedTasks.findIndex((task) => task.id === over.id);
 
       const newOrder = arrayMove(sortedTasks, oldIndex, newIndex);
-      reorderTasks(newOrder.map(task => task.id));
+
+      // Update order for each task
+      for (let i = 0; i < newOrder.length; i++) {
+        if (newOrder[i].order !== i) {
+          await updateTaskMutation.mutateAsync({
+            id: newOrder[i].id,
+            data: { order: i },
+          });
+        }
+      }
 
       toast.success('ترتیب وظایف تغییر کرد');
     }
@@ -219,7 +234,7 @@ const Tasks = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Priority */}
-        <Dropdown
+        <CustomDropdown
           label="اولویت"
           value={formData.priority}
           onChange={(value) => setFormData({ ...formData, priority: value })}
@@ -354,7 +369,7 @@ const Tasks = () => {
 
           {/* Sort */}
           <div className="sm:w-40">
-            <Dropdown
+            <CustomDropdown
               value={sortBy}
               onChange={setSortBy}
               options={SORT_OPTIONS}
@@ -406,7 +421,7 @@ const Tasks = () => {
               <AnimatePresence>
                 {sortedTasks.map((task) => {
                   const priority = PRIORITIES.find(p => p.value === task.priority);
-                  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
+                  const isOverdue = task.deadline && new Date(task.deadline) < new Date() && !task.isCompleted;
 
                   return (
                     <SortableTaskItem
@@ -414,7 +429,7 @@ const Tasks = () => {
                       task={task}
                       priority={priority}
                       isOverdue={isOverdue}
-                      onToggleComplete={toggleTaskComplete}
+                      onToggleComplete={() => toggleTaskMutation.mutate(task.id)}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
                     />

@@ -9,7 +9,7 @@ import {
   TagIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
-import useTaskStore from '../stores/taskStore';
+import { useLabels } from '../hooks/useLabels';
 import { LABEL_COLORS } from './LabelPicker';
 
 const SortableTaskItem = ({
@@ -20,7 +20,7 @@ const SortableTaskItem = ({
   onEdit,
   onDelete,
 }) => {
-  const { getLabels } = useTaskStore();
+  const { data: allLabels = [] } = useLabels();
   const {
     attributes,
     listeners,
@@ -37,7 +37,6 @@ const SortableTaskItem = ({
   };
 
   // دریافت لیبل‌های وظیفه
-  const allLabels = getLabels();
   const taskLabels = allLabels.filter(label => task.labelIds?.includes(label.id));
 
   const getColorConfig = (colorValue) => {
@@ -52,7 +51,7 @@ const SortableTaskItem = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -100 }}
       className={`group relative bg-white dark:bg-dark-bg-secondary rounded-xl p-5 border transition-all hover:shadow-lg ${
-        task.completed
+        task.isCompleted
           ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10'
           : isOverdue
           ? 'border-red-300 dark:border-red-700'
@@ -75,7 +74,7 @@ const SortableTaskItem = ({
           onClick={() => onToggleComplete(task.id)}
           className="mt-1 flex-shrink-0"
         >
-          {task.completed ? (
+          {task.isCompleted ? (
             <CheckCircleSolid className="w-6 h-6 text-green-500" />
           ) : (
             <div className="w-6 h-6 rounded-full border-2 border-light-border dark:border-dark-border hover:border-primary-500 dark:hover:border-primary-500 transition-colors" />
@@ -86,7 +85,7 @@ const SortableTaskItem = ({
         <div className="flex-1 min-w-0">
           <h3
             className={`text-lg font-semibold mb-1 ${
-              task.completed
+              task.isCompleted
                 ? 'line-through text-light-text-secondary dark:text-dark-text-secondary'
                 : 'text-light-text dark:text-dark-text'
             }`}
@@ -108,14 +107,14 @@ const SortableTaskItem = ({
             </span>
 
             {/* Due Date */}
-            {task.dueDate && (
+            {task.deadline && (
               <span className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded-full text-xs font-medium ${
                 isOverdue
                   ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
                   : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
               }`}>
                 <CalendarIcon className="w-3 h-3" />
-                <span>{new Date(task.dueDate).toLocaleDateString('fa-IR')}</span>
+                <span>{new Date(task.deadline).toLocaleDateString('fa-IR')}</span>
               </span>
             )}
 

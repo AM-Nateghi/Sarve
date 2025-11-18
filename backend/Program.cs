@@ -35,6 +35,7 @@ builder.Services.AddSingleton<LiteDbContext>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<TaskRepository>();
 builder.Services.AddScoped<SectionRepository>();
+builder.Services.AddScoped<LabelRepository>();
 
 // Services (Scoped)
 builder.Services.AddScoped<JwtService>();
