@@ -9,7 +9,8 @@ import {
 } from '@heroicons/react/24/solid';
 import { motion, AnimatePresence } from 'framer-motion';
 import useTimerStore from '../stores/timerStore';
-import useTaskStore from '../stores/taskStore';
+import { useTasks, useSaveTime } from '../hooks/useTasks';
+import toast from 'react-hot-toast';
 
 const Stopwatch = ({ onClose }) => {
   const {
@@ -26,7 +27,8 @@ const Stopwatch = ({ onClose }) => {
     setActiveTask,
   } = useTimerStore();
 
-  const { tasks } = useTaskStore();
+  const { data: tasks = [] } = useTasks();
+  const saveTimeMutation = useSaveTime();
   const [showTaskSelector, setShowTaskSelector] = useState(false);
   const [lastInteraction, setLastInteraction] = useState(Date.now());
   const inactivityTimerRef = useRef(null);
@@ -75,7 +77,20 @@ const Stopwatch = ({ onClose }) => {
     resetInactivityTimer();
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
+    // ذخیره زمان در بک‌اند اگر وظیفه انتخاب شده باشد
+    if (activeTask && elapsedTime > 0) {
+      try {
+        await saveTimeMutation.mutateAsync({
+          id: activeTask,
+          seconds: elapsedTime,
+        });
+        toast.success(`${formatTime(elapsedTime)} ثبت شد`);
+      } catch (error) {
+        toast.error('خطا در ذخیره زمان');
+      }
+    }
+
     stop();
     resetInactivityTimer();
   };
@@ -112,8 +127,8 @@ const Stopwatch = ({ onClose }) => {
     }
   }, [status]);
 
-  // فیلتر کردن وظایف در حال انجام
-  const activeTasks = tasks.filter((task) => task.status === 'in-progress' || task.status === 'todo');
+  // فیلتر کردن وظایف فعال (غیر تکمیل شده)
+  const activeTasks = tasks.filter((task) => !task.isCompleted);
   const selectedTask = tasks.find((task) => task.id === activeTask);
 
   // رنگ‌های مختلف برای وضعیت‌های مختلف
