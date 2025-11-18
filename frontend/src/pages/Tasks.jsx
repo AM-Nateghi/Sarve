@@ -194,7 +194,6 @@ const Tasks = () => {
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           placeholder="عنوان وظیفه را وارد کنید..."
           className="w-full px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary-500"
-          autoFocus
         />
       </div>
 
