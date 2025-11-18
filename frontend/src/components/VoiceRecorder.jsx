@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import aiApi from '../services/aiApi';
 
-const VoiceRecorder = ({ onTranscriptReady, onClose }) => {
+const VoiceRecorder = ({ onTasksExtracted, onClose }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -82,7 +82,7 @@ const VoiceRecorder = ({ onTranscriptReady, onClose }) => {
     }
   };
 
-  const handleTranscribe = async () => {
+  const handleExtractTasks = async () => {
     if (!audioBlob) {
       toast.error('لطفاً ابتدا صوت را ضبط یا بارگذاری کنید');
       return;
@@ -90,16 +90,22 @@ const VoiceRecorder = ({ onTranscriptReady, onClose }) => {
 
     setIsProcessing(true);
     try {
-      const result = await aiApi.transcribeAudio(audioBlob);
-      if (result.success && result.text) {
-        onTranscriptReady(result.text);
+      const result = await aiApi.transcribeAndExtractTasks(audioBlob);
+      if (result.success) {
+        if (result.tasks && result.tasks.length > 0) {
+          onTasksExtracted(result.tasks);
+          toast.success(`${result.tasks.length} وظیفه از صوت استخراج شد`);
+        } else {
+          toast.info('صوت به متن تبدیل شد اما وظیفه‌ای یافت نشد');
+          onTasksExtracted([]);
+        }
         onClose();
       } else {
-        toast.error('متنی از صوت استخراج نشد');
+        toast.error('خطا در پردازش صوت');
       }
     } catch (error) {
       console.error('Transcription error:', error);
-      toast.error(error.message || 'خطا در تبدیل صوت به متن');
+      toast.error(error.message || 'خطا در پردازش صوت');
     } finally {
       setIsProcessing(false);
     }
@@ -255,7 +261,7 @@ const VoiceRecorder = ({ onTranscriptReady, onClose }) => {
                   <span>لغو</span>
                 </button>
                 <button
-                  onClick={handleTranscribe}
+                  onClick={handleExtractTasks}
                   disabled={isProcessing}
                   className="flex-1 flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-3 rounded-xl font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -267,7 +273,7 @@ const VoiceRecorder = ({ onTranscriptReady, onClose }) => {
                   ) : (
                     <>
                       <PaperAirplaneIcon className="w-5 h-5" />
-                      <span>استخراج متن</span>
+                      <span>استخراج وظایف</span>
                     </>
                   )}
                 </button>

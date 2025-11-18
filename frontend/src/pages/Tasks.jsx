@@ -9,6 +9,7 @@ import {
   SparklesIcon,
   PlusIcon,
   FolderPlusIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import TaskCard from '../components/TaskCard';
@@ -19,6 +20,7 @@ import DatePicker from '../components/DatePicker';
 import CustomDropdown from '../components/CustomDropdown';
 import LabelPicker from '../components/LabelPicker';
 import AITaskExtractor from '../components/AITaskExtractor';
+import SmartReport from '../components/SmartReport';
 import TaskSkeleton from '../components/TaskSkeleton';
 import {
   useTasks,
@@ -62,6 +64,7 @@ const Tasks = () => {
   const [editingTask, setEditingTask] = useState(null);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [showAIExtractor, setShowAIExtractor] = useState(false);
+  const [showSmartReport, setShowSmartReport] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({});
   const [newSectionName, setNewSectionName] = useState('');
   const [formData, setFormData] = useState({
@@ -260,11 +263,37 @@ const Tasks = () => {
                 <span className="hidden md:inline">بخش جدید</span>
               </button>
               <button
+                onClick={() => setShowSmartReport(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-medium transition-all shadow-md hover:shadow-lg"
+                title="گزارش هوشمند"
+              >
+                <ChartBarIcon className="w-5 h-5" />
+                <span className="hidden md:inline">گزارش</span>
+              </button>
+              <button
                 onClick={() => setShowAIExtractor(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all shadow-md hover:shadow-lg"
               >
                 <SparklesIcon className="w-5 h-5" />
                 <span className="hidden md:inline">AI</span>
+              </button>
+            </div>
+
+            {/* Mobile AI Buttons */}
+            <div className="sm:hidden flex items-center gap-2">
+              <button
+                onClick={() => setShowSmartReport(true)}
+                className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg transition-all shadow-md"
+                title="گزارش"
+              >
+                <ChartBarIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowAIExtractor(true)}
+                className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md"
+                title="AI"
+              >
+                <SparklesIcon className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -553,6 +582,13 @@ const Tasks = () => {
         isOpen={showAIExtractor}
         onClose={() => setShowAIExtractor(false)}
       />
+
+      {/* Smart Report */}
+      <AnimatePresence>
+        {showSmartReport && (
+          <SmartReport tasks={tasks} onClose={() => setShowSmartReport(false)} />
+        )}
+      </AnimatePresence>
 
       {/* Section Creation Modal */}
       <Modal
