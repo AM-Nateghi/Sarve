@@ -29,8 +29,7 @@ const LabelPicker = ({ selectedLabels = [], onChange }) => {
     }
   };
 
-  const handleCreateLabel = async (e) => {
-    e.preventDefault();
+  const handleCreateLabel = async () => {
     if (newLabel.name.trim()) {
       const label = {
         name: newLabel.name.trim(),
@@ -39,6 +38,13 @@ const LabelPicker = ({ selectedLabels = [], onChange }) => {
       await createLabelMutation.mutateAsync(label);
       setNewLabel({ name: '', color: 'blue' });
       setIsCreating(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleCreateLabel();
     }
   };
 
@@ -92,11 +98,10 @@ const LabelPicker = ({ selectedLabels = [], onChange }) => {
       {/* فرم ساخت لیبل جدید */}
       <AnimatePresence>
         {isCreating && (
-          <motion.form
+          <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            onSubmit={handleCreateLabel}
             className="p-4 bg-light-bg-secondary dark:bg-dark-bg-tertiary rounded-lg border border-light-border dark:border-dark-border"
           >
             <div className="space-y-3">
@@ -109,6 +114,7 @@ const LabelPicker = ({ selectedLabels = [], onChange }) => {
                   type="text"
                   value={newLabel.name}
                   onChange={(e) => setNewLabel({ ...newLabel, name: e.target.value })}
+                  onKeyPress={handleKeyPress}
                   placeholder="مثلاً: فوری، مهم، کار شخصی"
                   className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   autoFocus
@@ -151,7 +157,8 @@ const LabelPicker = ({ selectedLabels = [], onChange }) => {
                   لغو
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleCreateLabel}
                   disabled={!newLabel.name.trim()}
                   className="px-3 py-1.5 text-sm rounded-lg bg-primary-500 hover:bg-primary-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -159,7 +166,7 @@ const LabelPicker = ({ selectedLabels = [], onChange }) => {
                 </button>
               </div>
             </div>
-          </motion.form>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

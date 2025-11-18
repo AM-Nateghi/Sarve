@@ -1,163 +1,108 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  PlusIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
   CheckCircleIcon,
-  ClockIcon
+  ClockIcon,
+  XMarkIcon,
+  SparklesIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
-import { CheckCircleIcon as CheckCircleSolid, SparklesIcon, DocumentChartBarIcon } from '@heroicons/react/24/solid';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import TaskCard from '../components/TaskCard';
+import FloatingActionButton from '../components/FloatingActionButton';
 import Modal from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import CustomDropdown from '../components/CustomDropdown';
-import SortableTaskItem from '../components/SortableTaskItem';
 import LabelPicker from '../components/LabelPicker';
-import TaskSkeleton from '../components/TaskSkeleton';
 import AITaskExtractor from '../components/AITaskExtractor';
 import SmartReport from '../components/SmartReport';
-import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useToggleTask } from '../hooks/useTasks';
+import TaskSkeleton from '../components/TaskSkeleton';
+import {
+  useTasks,
+  useCreateTask,
+  useUpdateTask,
+  useDeleteTask,
+  useToggleTask,
+} from '../hooks/useTasks';
+import { useLabels } from '../hooks/useLabels';
 
 const PRIORITIES = [
-  { value: 1, label: 'کم', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
-  { value: 2, label: 'متوسط', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
-  { value: 3, label: 'زیاد', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },
-  { value: 4, label: 'فوری', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+  { value: 1, label: 'کم' },
+  { value: 2, label: 'متوسط' },
+  { value: 3, label: 'زیاد' },
+  { value: 4, label: 'فوری' },
 ];
 
 const FILTERS = [
   { value: 'all', label: 'همه', icon: FunnelIcon },
   { value: 'active', label: 'فعال', icon: ClockIcon },
-  { value: 'completed', label: 'انجام شده', icon: CheckCircleIcon },
-];
-
-const SORT_OPTIONS = [
-  { value: 'date', label: 'تاریخ' },
-  { value: 'priority', label: 'اولویت' },
-  { value: 'title', label: 'عنوان' },
+  { value: 'completed', label: 'تکمیل شده', icon: CheckCircleIcon },
 ];
 
 const Tasks = () => {
   // React Query hooks
   const { data: tasks = [], isLoading } = useTasks();
+  const { data: labels = [] } = useLabels();
   const createTaskMutation = useCreateTask();
   const updateTaskMutation = useUpdateTask();
   const deleteTaskMutation = useDeleteTask();
   const toggleTaskMutation = useToggleTask();
 
+  // State
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBy, setFilterBy] = useState('all');
-  const [sortBy, setSortBy] = useState('date');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [showAIExtractor, setShowAIExtractor] = useState(false);
   const [showSmartReport, setShowSmartReport] = useState(false);
-
-  // تنظیمات Drag & Drop
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // حداقل فاصله برای شروع drag (جلوگیری از drag تصادفی)
-      },
-    })
-  );
-
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    priority: 1,
+    priority: 2,
     dueDate: null,
     labelIds: [],
   });
 
   // Filter tasks
-  const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (task.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch =
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (task.description || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesFilter =
-      filterBy === 'all' ? true :
-      filterBy === 'active' ? !task.isCompleted :
-      filterBy === 'completed' ? task.isCompleted :
-      true;
+      filterBy === 'all'
+        ? true
+        : filterBy === 'active'
+        ? !task.isCompleted
+        : task.isCompleted;
 
     return matchesSearch && matchesFilter;
   });
 
-  // Sort tasks
-  const sortedTasks = [...filteredTasks].sort((a, b) => {
-    if (sortBy === 'priority') {
-      return b.priority - a.priority;
-    } else if (sortBy === 'title') {
-      return a.title.localeCompare(b.title, 'fa');
-    } else {
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    }
-  });
-
-  // Calculate stats
+  // Stats
   const stats = {
     total: tasks.length,
-    completed: tasks.filter(t => t.isCompleted).length,
-    active: tasks.filter(t => !t.isCompleted).length,
+    active: tasks.filter((t) => !t.isCompleted).length,
+    completed: tasks.filter((t) => t.isCompleted).length,
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!formData.title.trim()) {
-      toast.error('عنوان وظیفه الزامی است');
-      return;
-    }
-
-    const taskData = {
-      title: formData.title.trim(),
-      description: formData.description?.trim() || null,
-      priority: formData.priority,
-      deadline: formData.dueDate ? formData.dueDate.toISOString() : null,
-      labelIds: formData.labelIds,
-      sectionId: 'default',
-    };
-
-    if (editingTask) {
-      await updateTaskMutation.mutateAsync({
-        id: editingTask.id,
-        data: taskData,
-      });
-      setEditingTask(null);
-    } else {
-      await createTaskMutation.mutateAsync(taskData);
-    }
-
-    resetForm();
-  };
-
-  const resetForm = () => {
+  // Open modal for new task
+  const openNewTaskModal = () => {
+    setEditingTask(null);
     setFormData({
       title: '',
       description: '',
-      priority: 1,
+      priority: 2,
       dueDate: null,
       labelIds: [],
     });
-    setIsModalOpen(false);
-    setEditingTask(null);
+    setIsModalOpen(true);
   };
 
-  const handleEdit = (task) => {
+  // Open modal for editing
+  const openEditModal = (task) => {
     setEditingTask(task);
     setFormData({
       title: task.title,
@@ -169,314 +114,377 @@ const Tasks = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (taskId, taskTitle) => {
-    if (window.confirm(`آیا از حذف وظیفه "${taskTitle}" اطمینان دارید؟`)) {
-      await deleteTaskMutation.mutateAsync(taskId);
-    }
+  // Close modal
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingTask(null);
+    setFormData({
+      title: '',
+      description: '',
+      priority: 2,
+      dueDate: null,
+      labelIds: [],
+    });
   };
 
-  // مدیریت Drag & Drop
-  const handleDragEnd = async (event) => {
-    const { active, over } = event;
+  // Submit form
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    if (over && active.id !== over.id) {
-      const oldIndex = sortedTasks.findIndex((task) => task.id === active.id);
-      const newIndex = sortedTasks.findIndex((task) => task.id === over.id);
+    if (!formData.title.trim()) {
+      toast.error('عنوان وظیفه الزامی است');
+      return;
+    }
 
-      const newOrder = arrayMove(sortedTasks, oldIndex, newIndex);
+    const taskData = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      priority: formData.priority,
+      deadline: formData.dueDate ? formData.dueDate.toISOString() : null,
+      labelIds: formData.labelIds,
+    };
 
-      // Update order for each task
-      for (let i = 0; i < newOrder.length; i++) {
-        if (newOrder[i].order !== i) {
-          await updateTaskMutation.mutateAsync({
-            id: newOrder[i].id,
-            data: { order: i },
-          });
-        }
+    try {
+      if (editingTask) {
+        await updateTaskMutation.mutateAsync({ id: editingTask.id, ...taskData });
+      } else {
+        await createTaskMutation.mutateAsync(taskData);
       }
-
-      toast.success('ترتیب وظایف تغییر کرد');
+      closeModal();
+    } catch (error) {
+      console.error('Error saving task:', error);
     }
   };
 
-  // Task Form Component
-  const TaskForm = () => (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Title */}
-      <div>
-        <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
-          عنوان *
-        </label>
-        <input
-          type="text"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          placeholder="عنوان وظیفه را وارد کنید..."
-          className="w-full px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary-500"
-        />
-      </div>
+  // Toggle task completion
+  const handleToggle = async (taskId) => {
+    try {
+      await toggleTaskMutation.mutateAsync(taskId);
+    } catch (error) {
+      console.error('Error toggling task:', error);
+    }
+  };
 
-      {/* Description */}
-      <div>
-        <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
-          توضیحات
-        </label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          placeholder="توضیحات اضافی..."
-          rows={3}
-          className="w-full px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary-500"
-        />
-      </div>
+  // Delete task
+  const handleDelete = async (taskId) => {
+    if (window.confirm('آیا از حذف این وظیفه اطمینان دارید؟')) {
+      try {
+        await deleteTaskMutation.mutateAsync(taskId);
+      } catch (error) {
+        console.error('Error deleting task:', error);
+      }
+    }
+  };
 
-      {/* Labels */}
-      <LabelPicker
-        selectedLabels={formData.labelIds}
-        onChange={(labelIds) => setFormData({ ...formData, labelIds })}
-      />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Priority */}
-        <CustomDropdown
-          label="اولویت"
-          value={formData.priority}
-          onChange={(value) => setFormData({ ...formData, priority: value })}
-          options={PRIORITIES}
-          placeholder="انتخاب اولویت"
-        />
-
-        {/* Due Date */}
-        <div>
-          <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
-            تاریخ سررسید
-          </label>
-          <DatePicker
-            selected={formData.dueDate}
-            onChange={(date) => setFormData({ ...formData, dueDate: date })}
-            placeholder="انتخاب تاریخ"
-            minDate={new Date()}
-          />
-        </div>
-      </div>
-
-      {/* Buttons */}
-      <div className="flex gap-3 justify-end pt-4">
-        <button
-          type="button"
-          onClick={resetForm}
-          className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-light-text dark:text-dark-text font-medium transition-colors"
-        >
-          لغو
-        </button>
-        <button
-          type="submit"
-          className="px-6 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors"
-        >
-          {editingTask ? 'به‌روزرسانی' : 'افزودن'}
-        </button>
-      </div>
-    </form>
-  );
+  // Handle AI extracted tasks
+  const handleTasksExtracted = async (extractedTasks) => {
+    for (const task of extractedTasks) {
+      try {
+        await createTaskMutation.mutateAsync(task);
+      } catch (error) {
+        console.error('Error creating extracted task:', error);
+      }
+    }
+    setShowAIExtractor(false);
+  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header with Stats */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-light-text dark:text-dark-text mb-2">
-              وظایف من
-            </h1>
-            <p className="text-light-text-secondary dark:text-dark-text-secondary">
-              مدیریت و پیگیری وظایف روزانه
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowSmartReport(true)}
-              className="flex items-center space-x-2 space-x-reverse bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium py-3 px-4 sm:px-6 rounded-xl transition-all shadow-lg hover:shadow-xl"
-              title="گزارش هوشمند"
-            >
-              <DocumentChartBarIcon className="w-5 h-5" />
-              <span className="hidden sm:inline">گزارش AI</span>
-            </button>
-            <button
-              onClick={() => setShowAIExtractor(true)}
-              className="flex items-center space-x-2 space-x-reverse bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium py-3 px-4 sm:px-6 rounded-xl transition-all shadow-lg hover:shadow-xl"
-              title="استخراج هوشمند وظایف"
-            >
-              <SparklesIcon className="w-5 h-5" />
-              <span className="hidden sm:inline">AI</span>
-            </button>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center space-x-2 space-x-reverse bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl"
-            >
-              <PlusIcon className="w-5 h-5" />
-              <span>وظیفه جدید</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mb-1">کل وظایف</p>
-                <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">{stats.total}</p>
-              </div>
-              <FunnelIcon className="w-10 h-10 text-blue-500 dark:text-blue-400 opacity-50" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-1">انجام شده</p>
-                <p className="text-3xl font-bold text-green-700 dark:text-green-300">{stats.completed}</p>
-              </div>
-              <CheckCircleSolid className="w-10 h-10 text-green-500 dark:text-green-400 opacity-50" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-xl p-4 border border-orange-200 dark:border-orange-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-orange-600 dark:text-orange-400 font-medium mb-1">در حال انجام</p>
-                <p className="text-3xl font-bold text-orange-700 dark:text-orange-300">{stats.active}</p>
-              </div>
-              <ClockIcon className="w-10 h-10 text-orange-500 dark:text-orange-400 opacity-50" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="bg-white dark:bg-dark-bg-secondary rounded-xl p-4 mb-6 border border-light-border dark:border-dark-border">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1 relative">
-            <MagnifyingGlassIcon className="w-5 h-5 absolute right-3 top-1/2 transform -translate-y-1/2 text-light-text-tertiary dark:text-dark-text-tertiary" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="جستجو در وظایف..."
-              className="w-full pr-10 pl-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
-            />
-          </div>
-
-          {/* Filter Buttons */}
-          <div className="flex gap-2">
-            {FILTERS.map((filter) => {
-              const Icon = filter.icon;
-              return (
-                <button
-                  key={filter.value}
-                  onClick={() => setFilterBy(filter.value)}
-                  className={`flex items-center space-x-2 space-x-reverse px-4 py-2 rounded-lg transition-all ${
-                    filterBy === filter.value
-                      ? 'bg-primary-500 text-white shadow-md'
-                      : 'bg-light-bg-tertiary dark:bg-dark-bg-tertiary text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-dark-border'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{filter.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Sort */}
-          <div className="sm:w-40">
-            <CustomDropdown
-              value={sortBy}
-              onChange={setSortBy}
-              options={SORT_OPTIONS}
-              placeholder="مرتب‌سازی"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Modal for Add/Edit Task (Desktop) */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={resetForm}
-        title={editingTask ? 'ویرایش وظیفه' : 'افزودن وظیفه جدید'}
-        size="lg"
-      >
-        <TaskForm />
-      </Modal>
-
-      {/* Tasks List with Drag & Drop */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="space-y-3">
-          {isLoading ? (
-            <TaskSkeleton count={5} />
-          ) : sortedTasks.length === 0 ? (
-            <div className="text-center py-16 bg-white dark:bg-dark-bg-secondary rounded-xl border border-light-border dark:border-dark-border">
-              <ClockIcon className="w-16 h-16 text-light-text-tertiary dark:text-dark-text-tertiary mx-auto mb-4 opacity-50" />
-              <p className="text-light-text-secondary dark:text-dark-text-secondary text-lg mb-2">
-                {searchQuery || filterBy !== 'all' ? 'وظیفه‌ای یافت نشد' : 'هنوز وظیفه‌ای اضافه نکرده‌اید'}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Title & Actions */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                وظایف من
+              </h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                مدیریت و پیگیری وظایف
               </p>
-              {!searchQuery && filterBy === 'all' && (
+            </div>
+
+            {/* Desktop AI Buttons */}
+            <div className="hidden sm:flex items-center gap-2">
+              <button
+                onClick={() => setShowSmartReport(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-medium transition-all shadow-md hover:shadow-lg"
+              >
+                <ChartBarIcon className="w-5 h-5" />
+                <span className="hidden md:inline">گزارش</span>
+              </button>
+              <button
+                onClick={() => setShowAIExtractor(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all shadow-md hover:shadow-lg"
+              >
+                <SparklesIcon className="w-5 h-5" />
+                <span className="hidden md:inline">AI</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+              <div className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 font-medium mb-1">
+                کل
+              </div>
+              <div className="text-xl sm:text-3xl font-bold text-blue-700 dark:text-blue-300">
+                {stats.total}
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+              <div className="text-xs sm:text-sm text-orange-600 dark:text-orange-400 font-medium mb-1">
+                فعال
+              </div>
+              <div className="text-xl sm:text-3xl font-bold text-orange-700 dark:text-orange-300">
+                {stats.active}
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+              <div className="text-xs sm:text-sm text-green-600 dark:text-green-400 font-medium mb-1">
+                تکمیل
+              </div>
+              <div className="text-xl sm:text-3xl font-bold text-green-700 dark:text-green-300">
+                {stats.completed}
+              </div>
+            </div>
+          </div>
+
+          {/* Search & Filters */}
+          <div className="space-y-3">
+            {/* Search */}
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="جستجو در وظایف..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pr-10 pl-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+              {searchQuery && (
                 <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="mt-4 text-primary-500 hover:text-primary-600 font-medium hover:underline"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
                 >
-                  اولین وظیفه خود را اضافه کنید
+                  <XMarkIcon className="w-4 h-4 text-gray-400" />
                 </button>
               )}
             </div>
-          ) : (
-            <SortableContext
-              items={sortedTasks.map(task => task.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <AnimatePresence>
-                {sortedTasks.map((task) => {
-                  const priority = PRIORITIES.find(p => p.value === task.priority);
-                  const isOverdue = task.deadline && new Date(task.deadline) < new Date() && !task.isCompleted;
 
-                  return (
-                    <SortableTaskItem
-                      key={task.id}
-                      task={task}
-                      priority={priority}
-                      isOverdue={isOverdue}
-                      onToggleComplete={() => toggleTaskMutation.mutate(task.id)}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                    />
-                  );
-                })}
-              </AnimatePresence>
-            </SortableContext>
-          )}
+            {/* Filters */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {FILTERS.map((filter) => {
+                const Icon = filter.icon;
+                const isActive = filterBy === filter.value;
+
+                return (
+                  <button
+                    key={filter.value}
+                    onClick={() => setFilterBy(filter.value)}
+                    className={`
+                      flex items-center gap-2 px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-all
+                      ${
+                        isActive
+                          ? 'bg-primary-500 text-white shadow-md'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }
+                    `}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{filter.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
-      </DndContext>
+      </div>
 
-      {/* AI Modals */}
+      {/* Tasks List */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {isLoading ? (
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <TaskSkeleton key={i} />
+            ))}
+          </div>
+        ) : filteredTasks.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+              <CheckCircleIcon className="w-10 h-10 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              {searchQuery ? 'نتیجه‌ای یافت نشد' : 'هنوز وظیفه‌ای ندارید'}
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              {searchQuery
+                ? 'جستجوی دیگری امتحان کنید'
+                : 'برای شروع، یک وظیفه جدید اضافه کنید'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <AnimatePresence mode="popLayout">
+              {filteredTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  labels={labels}
+                  onClick={() => openEditModal(task)}
+                  onToggle={() => handleToggle(task.id)}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      {/* FAB - Add Task */}
+      <FloatingActionButton onClick={openNewTaskModal} label="وظیفه جدید" />
+
+      {/* Mobile AI Buttons */}
+      <div className="sm:hidden fixed bottom-20 right-6 flex flex-col gap-3 z-40">
+        <motion.button
+          onClick={() => setShowSmartReport(true)}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full shadow-lg flex items-center justify-center"
+        >
+          <ChartBarIcon className="w-6 h-6 text-white" />
+        </motion.button>
+        <motion.button
+          onClick={() => setShowAIExtractor(true)}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full shadow-lg flex items-center justify-center"
+        >
+          <SparklesIcon className="w-6 h-6 text-white" />
+        </motion.button>
+      </div>
+
+      {/* Task Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={editingTask ? 'ویرایش وظیفه' : 'وظیفه جدید'}
+        size="md"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Title */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+              عنوان *
+            </label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              placeholder="عنوان وظیفه..."
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              autoComplete="off"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+              توضیحات
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              placeholder="توضیحات اضافی..."
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              autoComplete="off"
+            />
+          </div>
+
+          {/* Labels */}
+          <LabelPicker
+            selectedLabels={formData.labelIds}
+            onChange={(labelIds) => setFormData({ ...formData, labelIds })}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Priority */}
+            <CustomDropdown
+              label="اولویت"
+              value={formData.priority}
+              onChange={(value) => setFormData({ ...formData, priority: value })}
+              options={PRIORITIES}
+              placeholder="اولویت"
+            />
+
+            {/* Due Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                تاریخ سررسید
+              </label>
+              <DatePicker
+                selected={formData.dueDate}
+                onChange={(date) => setFormData({ ...formData, dueDate: date })}
+                placeholder="انتخاب تاریخ"
+                minDate={new Date()}
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4">
+            {editingTask && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleDelete(editingTask.id);
+                  closeModal();
+                }}
+                className="px-6 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition-colors"
+              >
+                حذف
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={closeModal}
+              className="flex-1 px-6 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium transition-colors"
+            >
+              لغو
+            </button>
+            <button
+              type="submit"
+              disabled={!formData.title.trim()}
+              className="flex-1 px-6 py-3 rounded-xl bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {editingTask ? 'به‌روزرسانی' : 'افزودن'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* AI Task Extractor */}
       <AnimatePresence>
         {showAIExtractor && (
           <AITaskExtractor
-            isOpen={showAIExtractor}
             onClose={() => setShowAIExtractor(false)}
+            onTasksExtracted={handleTasksExtracted}
           />
         )}
       </AnimatePresence>
 
+      {/* Smart Report */}
       <AnimatePresence>
         {showSmartReport && (
           <SmartReport
-            isOpen={showSmartReport}
+            tasks={tasks}
             onClose={() => setShowSmartReport(false)}
           />
         )}
