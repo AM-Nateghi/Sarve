@@ -34,19 +34,13 @@ const AITaskExtractor = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleVoiceTranscript = async (transcript) => {
+  const handleVoiceTasksExtracted = (tasks) => {
     setShowVoiceRecorder(false);
-
-    try {
-      const result = await extractTasksMutation.mutateAsync(transcript);
-      if (result.success && result.tasks.length > 0) {
-        setExtractedTasks(result.tasks);
-        toast.success(`${result.tasks.length} وظیفه استخراج شد`);
-      } else {
-        toast.error('هیچ وظیفه‌ای یافت نشد');
-      }
-    } catch (error) {
-      // خطا در hook handle می‌شود
+    if (tasks && tasks.length > 0) {
+      setExtractedTasks(tasks);
+      toast.success(`${tasks.length} وظیفه از صوت استخراج شد`);
+    } else {
+      toast.error('هیچ وظیفه‌ای از صوت استخراج نشد');
     }
   };
 
@@ -249,7 +243,7 @@ const AITaskExtractor = ({ isOpen, onClose }) => {
       <AnimatePresence>
         {showVoiceRecorder && (
           <VoiceRecorder
-            onTranscriptReady={handleVoiceTranscript}
+            onTasksExtracted={handleVoiceTasksExtracted}
             onClose={() => setShowVoiceRecorder(false)}
           />
         )}

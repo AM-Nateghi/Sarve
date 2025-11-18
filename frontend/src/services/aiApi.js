@@ -48,6 +48,11 @@ const checkRateLimit = () => {
   }
 };
 
+// دریافت نام مدل از env
+const getModelName = () => {
+  return import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.0-flash-exp';
+};
+
 const aiApi = {
   // استخراج وظایف از متن
   extractTasks: async (input, retryCount = 0) => {
@@ -79,7 +84,7 @@ const aiApi = {
 - فقط JSON بازگردان، بدون توضیح اضافی`;
 
       const response = await geminiAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: getModelName(),
         contents: prompt,
       });
       let jsonResponse = response.text.trim();
@@ -153,7 +158,7 @@ ${tasksJson}
 }`;
 
       const response = await geminiAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: getModelName(),
         contents: prompt,
       });
       let jsonResponse = response.text.trim();
@@ -189,8 +194,8 @@ ${tasksJson}
     }
   },
 
-  // تبدیل صوت به متن
-  transcribeAudio: async (audioBlob, retryCount = 0) => {
+  // تبدیل صوت به متن و استخراج وظایف (در یک درخواست)
+  transcribeAndExtractTasks: async (audioBlob, retryCount = 0) => {
     checkRateLimit();
 
     try {
@@ -207,8 +212,31 @@ ${tasksJson}
         reader.readAsDataURL(audioBlob);
       });
 
+      const prompt = `شما یک دستیار هوشمند برای مدیریت وظایف هستید. این فایل صوتی را گوش کنید و:
+1. ابتدا محتوای آن را به متن فارسی تبدیل کنید
+2. سپس از آن متن، وظایف را استخراج کنید
+
+خروجی را به صورت JSON با این فرمت برگردانید:
+{
+    "transcript": "متن کامل صوت...",
+    "tasks": [
+        {
+            "title": "عنوان وظیفه",
+            "description": "توضیحات اختیاری",
+            "priority": 2,
+            "deadline": "2025-01-20T00:00:00Z"
+        }
+    ]
+}
+
+نکات:
+- priority: 1 (کم), 2 (متوسط), 3 (زیاد), 4 (فوری)
+- deadline فقط اگر در متن ذکر شده باشد
+- اگر وظیفه‌ای نبود، آرایه tasks خالی باشد
+- فقط JSON بازگردان، بدون توضیح اضافی`;
+
       const response = await geminiAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: getModelName(),
         contents: [
           {
             parts: [
@@ -219,29 +247,45 @@ ${tasksJson}
                 },
               },
               {
-                text: 'لطفاً این فایل صوتی را به متن تبدیل کن. فقط متن را برگردان، بدون توضیح اضافی.',
+                text: prompt,
               },
             ],
           },
         ],
       });
 
-      const text = response.text.trim();
+      let jsonResponse = response.text.trim();
+
+      // پاک کردن markdown code blocks
+      if (jsonResponse.startsWith('```json')) {
+        jsonResponse = jsonResponse.substring(7);
+      }
+      if (jsonResponse.startsWith('```')) {
+        jsonResponse = jsonResponse.substring(3);
+      }
+      if (jsonResponse.endsWith('```')) {
+        jsonResponse = jsonResponse.substring(0, jsonResponse.length - 3);
+      }
+      jsonResponse = jsonResponse.trim();
+
+      const parsed = JSON.parse(jsonResponse);
 
       return {
         success: true,
-        text: text,
+        transcript: parsed.transcript || '',
+        tasks: parsed.tasks || [],
+        count: (parsed.tasks || []).length,
       };
     } catch (error) {
-      console.error('Error transcribing audio:', error);
+      console.error('Error transcribing and extracting tasks:', error);
 
       // Retry logic
       if (retryCount < 2) {
         await new Promise((resolve) => setTimeout(resolve, 1000 * (retryCount + 1)));
-        return aiApi.transcribeAudio(audioBlob, retryCount + 1);
+        return aiApi.transcribeAndExtractTasks(audioBlob, retryCount + 1);
       }
 
-      throw new Error(error.message || 'خطا در تبدیل صوت به متن');
+      throw new Error(error.message || 'خطا در پردازش صوت');
     }
   },
 };
