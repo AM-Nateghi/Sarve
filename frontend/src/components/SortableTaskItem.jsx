@@ -6,8 +6,11 @@ import {
   TrashIcon,
   CalendarIcon,
   Bars3Icon,
+  TagIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
+import useTaskStore from '../stores/taskStore';
+import { LABEL_COLORS } from './LabelPicker';
 
 const SortableTaskItem = ({
   task,
@@ -17,6 +20,7 @@ const SortableTaskItem = ({
   onEdit,
   onDelete,
 }) => {
+  const { getLabels } = useTaskStore();
   const {
     attributes,
     listeners,
@@ -30,6 +34,14 @@ const SortableTaskItem = ({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  // دریافت لیبل‌های وظیفه
+  const allLabels = getLabels();
+  const taskLabels = allLabels.filter(label => task.labelIds?.includes(label.id));
+
+  const getColorConfig = (colorValue) => {
+    return LABEL_COLORS.find(c => c.value === colorValue) || LABEL_COLORS[0];
   };
 
   return (
@@ -106,6 +118,21 @@ const SortableTaskItem = ({
                 <span>{new Date(task.dueDate).toLocaleDateString('fa-IR')}</span>
               </span>
             )}
+
+            {/* Labels */}
+            {taskLabels.map((label) => {
+              const colorConfig = getColorConfig(label.color);
+              return (
+                <span
+                  key={label.id}
+                  className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-white"
+                  style={{ backgroundColor: colorConfig.hex }}
+                >
+                  <TagIcon className="w-3 h-3" />
+                  <span>{label.name}</span>
+                </span>
+              );
+            })}
           </div>
         </div>
 

@@ -26,6 +26,7 @@ import Modal from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import Dropdown from '../components/Dropdown';
 import SortableTaskItem from '../components/SortableTaskItem';
+import LabelPicker from '../components/LabelPicker';
 
 const PRIORITIES = [
   { value: 1, label: 'کم', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
@@ -68,6 +69,7 @@ const Tasks = () => {
     description: '',
     priority: 1,
     dueDate: null,
+    labelIds: [],
   });
 
   const allTasks = getTasks();
@@ -124,7 +126,6 @@ const Tasks = () => {
         ...formData,
         dueDate: formData.dueDate ? formData.dueDate.toISOString() : null,
         sectionId: 'default',
-        labelIds: [],
       });
       toast.success('وظیفه جدید اضافه شد');
     }
@@ -138,6 +139,7 @@ const Tasks = () => {
       description: '',
       priority: 1,
       dueDate: null,
+      labelIds: [],
     });
     setIsModalOpen(false);
     setEditingTask(null);
@@ -150,6 +152,7 @@ const Tasks = () => {
       description: task.description || '',
       priority: task.priority,
       dueDate: task.dueDate ? new Date(task.dueDate) : null,
+      labelIds: task.labelIds || [],
     });
     setIsModalOpen(true);
   };
@@ -207,6 +210,12 @@ const Tasks = () => {
           className="w-full px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
       </div>
+
+      {/* Labels */}
+      <LabelPicker
+        selectedLabels={formData.labelIds}
+        onChange={(labelIds) => setFormData({ ...formData, labelIds })}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Priority */}
