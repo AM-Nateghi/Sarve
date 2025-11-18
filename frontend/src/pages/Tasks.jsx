@@ -27,6 +27,7 @@ import DatePicker from '../components/DatePicker';
 import Dropdown from '../components/Dropdown';
 import SortableTaskItem from '../components/SortableTaskItem';
 import LabelPicker from '../components/LabelPicker';
+import TaskSkeleton from '../components/TaskSkeleton';
 
 const PRIORITIES = [
   { value: 1, label: 'کم', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
@@ -48,7 +49,7 @@ const SORT_OPTIONS = [
 ];
 
 const Tasks = () => {
-  const { getTasks, toggleTaskComplete, addTask, deleteTask, updateTask, reorderTasks } = useTaskStore();
+  const { getTasks, toggleTaskComplete, addTask, deleteTask, updateTask, reorderTasks, isLoading } = useTaskStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBy, setFilterBy] = useState('all');
   const [sortBy, setSortBy] = useState('date');
@@ -381,7 +382,9 @@ const Tasks = () => {
         onDragEnd={handleDragEnd}
       >
         <div className="space-y-3">
-          {sortedTasks.length === 0 ? (
+          {isLoading ? (
+            <TaskSkeleton count={5} />
+          ) : sortedTasks.length === 0 ? (
             <div className="text-center py-16 bg-white dark:bg-dark-bg-secondary rounded-xl border border-light-border dark:border-dark-border">
               <ClockIcon className="w-16 h-16 text-light-text-tertiary dark:text-dark-text-tertiary mx-auto mb-4 opacity-50" />
               <p className="text-light-text-secondary dark:text-dark-text-secondary text-lg mb-2">
