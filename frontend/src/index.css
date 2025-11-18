@@ -136,3 +136,35 @@
     @apply transition-all duration-300 ease-in-out;
   }
 }
+
+/* ========================================
+   React DatePicker Styling
+   ======================================== */
+.datepicker-custom .react-datepicker {
+  @apply bg-white dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border rounded-xl shadow-xl font-estedad;
+}
+
+.datepicker-custom .react-datepicker__header {
+  @apply bg-light-bg-secondary dark:bg-dark-bg-tertiary border-b border-light-border dark:border-dark-border rounded-t-xl;
+}
+
+.datepicker-custom .react-datepicker__current-month,
+.datepicker-custom .react-datepicker__day-name {
+  @apply text-light-text dark:text-dark-text font-semibold;
+}
+
+.datepicker-custom .react-datepicker__day {
+  @apply text-light-text dark:text-dark-text hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg;
+}
+
+.datepicker-custom .react-datepicker__day--selected {
+  @apply bg-primary-500 text-white font-bold hover:bg-primary-600;
+}
+
+.datepicker-custom .react-datepicker__day--today {
+  @apply font-bold border border-primary-500;
+}
+
+.datepicker-custom .react-datepicker__day--disabled {
+  @apply text-light-text-tertiary dark:text-dark-text-tertiary cursor-not-allowed hover:bg-transparent;
+}

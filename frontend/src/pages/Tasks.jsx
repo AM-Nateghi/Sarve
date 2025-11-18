@@ -6,7 +6,6 @@ import {
   PencilIcon,
   TrashIcon,
   CalendarIcon,
-  TagIcon,
   CheckCircleIcon,
   ClockIcon
 } from '@heroicons/react/24/outline';
@@ -14,6 +13,9 @@ import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
 import useTaskStore from '../stores/taskStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import Modal from '../components/Modal';
+import DatePicker from '../components/DatePicker';
+import Dropdown from '../components/Dropdown';
 
 const PRIORITIES = [
   { value: 1, label: 'کم', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
@@ -28,19 +30,25 @@ const FILTERS = [
   { value: 'completed', label: 'انجام شده', icon: CheckCircleIcon },
 ];
 
+const SORT_OPTIONS = [
+  { value: 'date', label: 'تاریخ' },
+  { value: 'priority', label: 'اولویت' },
+  { value: 'title', label: 'عنوان' },
+];
+
 const Tasks = () => {
   const { getTasks, toggleTaskComplete, addTask, deleteTask, updateTask } = useTaskStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBy, setFilterBy] = useState('all');
-  const [sortBy, setSortBy] = useState('date'); // date, priority, title
-  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [sortBy, setSortBy] = useState('date');
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     priority: 1,
-    dueDate: '',
+    dueDate: null,
   });
 
   const allTasks = getTasks();
@@ -86,12 +94,16 @@ const Tasks = () => {
     }
 
     if (editingTask) {
-      updateTask(editingTask.id, formData);
+      updateTask(editingTask.id, {
+        ...formData,
+        dueDate: formData.dueDate ? formData.dueDate.toISOString() : null,
+      });
       toast.success('وظیفه به‌روزرسانی شد');
       setEditingTask(null);
     } else {
       addTask({
         ...formData,
+        dueDate: formData.dueDate ? formData.dueDate.toISOString() : null,
         sectionId: 'default',
         labelIds: [],
       });
@@ -106,9 +118,9 @@ const Tasks = () => {
       title: '',
       description: '',
       priority: 1,
-      dueDate: '',
+      dueDate: null,
     });
-    setIsAddingTask(false);
+    setIsModalOpen(false);
     setEditingTask(null);
   };
 
@@ -118,9 +130,9 @@ const Tasks = () => {
       title: task.title,
       description: task.description || '',
       priority: task.priority,
-      dueDate: task.dueDate || '',
+      dueDate: task.dueDate ? new Date(task.dueDate) : null,
     });
-    setIsAddingTask(true);
+    setIsModalOpen(true);
   };
 
   const handleDelete = (taskId, taskTitle) => {
@@ -129,6 +141,81 @@ const Tasks = () => {
       toast.success('وظیفه حذف شد');
     }
   };
+
+  // Task Form Component
+  const TaskForm = () => (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Title */}
+      <div>
+        <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
+          عنوان *
+        </label>
+        <input
+          type="text"
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          placeholder="عنوان وظیفه را وارد کنید..."
+          className="w-full px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary-500"
+          autoFocus
+        />
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
+          توضیحات
+        </label>
+        <textarea
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="توضیحات اضافی..."
+          rows={3}
+          className="w-full px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary-500"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Priority */}
+        <Dropdown
+          label="اولویت"
+          value={formData.priority}
+          onChange={(value) => setFormData({ ...formData, priority: value })}
+          options={PRIORITIES}
+          placeholder="انتخاب اولویت"
+        />
+
+        {/* Due Date */}
+        <div>
+          <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
+            تاریخ سررسید
+          </label>
+          <DatePicker
+            selected={formData.dueDate}
+            onChange={(date) => setFormData({ ...formData, dueDate: date })}
+            placeholder="انتخاب تاریخ"
+            minDate={new Date()}
+          />
+        </div>
+      </div>
+
+      {/* Buttons */}
+      <div className="flex gap-3 justify-end pt-4">
+        <button
+          type="button"
+          onClick={resetForm}
+          className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-light-text dark:text-dark-text font-medium transition-colors"
+        >
+          لغو
+        </button>
+        <button
+          type="submit"
+          className="px-6 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors"
+        >
+          {editingTask ? 'به‌روزرسانی' : 'افزودن'}
+        </button>
+      </div>
+    </form>
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -144,7 +231,7 @@ const Tasks = () => {
             </p>
           </div>
           <button
-            onClick={() => setIsAddingTask(true)}
+            onClick={() => setIsModalOpen(true)}
             className="flex items-center space-x-2 space-x-reverse bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl"
           >
             <PlusIcon className="w-5 h-5" />
@@ -223,111 +310,26 @@ const Tasks = () => {
           </div>
 
           {/* Sort */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            <option value="date">تاریخ</option>
-            <option value="priority">اولویت</option>
-            <option value="title">عنوان</option>
-          </select>
+          <div className="sm:w-40">
+            <Dropdown
+              value={sortBy}
+              onChange={setSortBy}
+              options={SORT_OPTIONS}
+              placeholder="مرتب‌سازی"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Add/Edit Task Form */}
-      <AnimatePresence>
-        {isAddingTask && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="bg-white dark:bg-dark-bg-secondary rounded-xl p-6 mb-6 border-2 border-primary-500 shadow-lg"
-          >
-            <h3 className="text-lg font-bold text-light-text dark:text-dark-text mb-4">
-              {editingTask ? 'ویرایش وظیفه' : 'افزودن وظیفه جدید'}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
-                  عنوان *
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="عنوان وظیفه را وارد کنید..."
-                  className="w-full px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  autoFocus
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
-                  توضیحات
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="توضیحات اضافی..."
-                  rows={3}
-                  className="w-full px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Priority */}
-                <div>
-                  <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
-                    اولویت
-                  </label>
-                  <select
-                    value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
-                    className="w-full px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  >
-                    {PRIORITIES.map((p) => (
-                      <option key={p.value} value={p.value}>{p.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Due Date */}
-                <div>
-                  <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
-                    تاریخ سررسید
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.dueDate}
-                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                    className="w-full px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-light-text dark:text-dark-text font-medium transition-colors"
-                >
-                  لغو
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors"
-                >
-                  {editingTask ? 'به‌روزرسانی' : 'افزودن'}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Modal for Add/Edit Task (Desktop) */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={resetForm}
+        title={editingTask ? 'ویرایش وظیفه' : 'افزودن وظیفه جدید'}
+        size="lg"
+      >
+        <TaskForm />
+      </Modal>
 
       {/* Tasks List */}
       <div className="space-y-3">
@@ -339,7 +341,7 @@ const Tasks = () => {
             </p>
             {!searchQuery && filterBy === 'all' && (
               <button
-                onClick={() => setIsAddingTask(true)}
+                onClick={() => setIsModalOpen(true)}
                 className="mt-4 text-primary-500 hover:text-primary-600 font-medium hover:underline"
               >
                 اولین وظیفه خود را اضافه کنید
