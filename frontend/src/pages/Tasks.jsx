@@ -3,19 +3,29 @@ import {
   PlusIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
-  PencilIcon,
-  TrashIcon,
-  CalendarIcon,
   CheckCircleIcon,
   ClockIcon
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import useTaskStore from '../stores/taskStore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import DatePicker from '../components/DatePicker';
 import Dropdown from '../components/Dropdown';
+import SortableTaskItem from '../components/SortableTaskItem';
 
 const PRIORITIES = [
   { value: 1, label: 'کم', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
@@ -37,12 +47,21 @@ const SORT_OPTIONS = [
 ];
 
 const Tasks = () => {
-  const { getTasks, toggleTaskComplete, addTask, deleteTask, updateTask } = useTaskStore();
+  const { getTasks, toggleTaskComplete, addTask, deleteTask, updateTask, reorderTasks } = useTaskStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBy, setFilterBy] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+
+  // تنظیمات Drag & Drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // حداقل فاصله برای شروع drag (جلوگیری از drag تصادفی)
+      },
+    })
+  );
 
   const [formData, setFormData] = useState({
     title: '',
@@ -139,6 +158,21 @@ const Tasks = () => {
     if (window.confirm(`آیا از حذف وظیفه "${taskTitle}" اطمینان دارید؟`)) {
       deleteTask(taskId);
       toast.success('وظیفه حذف شد');
+    }
+  };
+
+  // مدیریت Drag & Drop
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = sortedTasks.findIndex((task) => task.id === active.id);
+      const newIndex = sortedTasks.findIndex((task) => task.id === over.id);
+
+      const newOrder = arrayMove(sortedTasks, oldIndex, newIndex);
+      reorderTasks(newOrder.map(task => task.id));
+
+      toast.success('ترتیب وظایف تغییر کرد');
     }
   };
 
@@ -331,119 +365,55 @@ const Tasks = () => {
         <TaskForm />
       </Modal>
 
-      {/* Tasks List */}
-      <div className="space-y-3">
-        {sortedTasks.length === 0 ? (
-          <div className="text-center py-16 bg-white dark:bg-dark-bg-secondary rounded-xl border border-light-border dark:border-dark-border">
-            <ClockIcon className="w-16 h-16 text-light-text-tertiary dark:text-dark-text-tertiary mx-auto mb-4 opacity-50" />
-            <p className="text-light-text-secondary dark:text-dark-text-secondary text-lg mb-2">
-              {searchQuery || filterBy !== 'all' ? 'وظیفه‌ای یافت نشد' : 'هنوز وظیفه‌ای اضافه نکرده‌اید'}
-            </p>
-            {!searchQuery && filterBy === 'all' && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="mt-4 text-primary-500 hover:text-primary-600 font-medium hover:underline"
-              >
-                اولین وظیفه خود را اضافه کنید
-              </button>
-            )}
-          </div>
-        ) : (
-          <AnimatePresence>
-            {sortedTasks.map((task) => {
-              const priority = PRIORITIES.find(p => p.value === task.priority);
-              const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
-
-              return (
-                <motion.div
-                  key={task.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -100 }}
-                  className={`group relative bg-white dark:bg-dark-bg-secondary rounded-xl p-5 border transition-all hover:shadow-lg ${
-                    task.completed
-                      ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10'
-                      : isOverdue
-                      ? 'border-red-300 dark:border-red-700'
-                      : 'border-light-border dark:border-dark-border hover:border-primary-300 dark:hover:border-primary-700'
-                  }`}
+      {/* Tasks List with Drag & Drop */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="space-y-3">
+          {sortedTasks.length === 0 ? (
+            <div className="text-center py-16 bg-white dark:bg-dark-bg-secondary rounded-xl border border-light-border dark:border-dark-border">
+              <ClockIcon className="w-16 h-16 text-light-text-tertiary dark:text-dark-text-tertiary mx-auto mb-4 opacity-50" />
+              <p className="text-light-text-secondary dark:text-dark-text-secondary text-lg mb-2">
+                {searchQuery || filterBy !== 'all' ? 'وظیفه‌ای یافت نشد' : 'هنوز وظیفه‌ای اضافه نکرده‌اید'}
+              </p>
+              {!searchQuery && filterBy === 'all' && (
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="mt-4 text-primary-500 hover:text-primary-600 font-medium hover:underline"
                 >
-                  <div className="flex items-start gap-4">
-                    {/* Checkbox */}
-                    <button
-                      onClick={() => toggleTaskComplete(task.id)}
-                      className="mt-1 flex-shrink-0"
-                    >
-                      {task.completed ? (
-                        <CheckCircleSolid className="w-6 h-6 text-green-500" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full border-2 border-light-border dark:border-dark-border hover:border-primary-500 dark:hover:border-primary-500 transition-colors" />
-                      )}
-                    </button>
+                  اولین وظیفه خود را اضافه کنید
+                </button>
+              )}
+            </div>
+          ) : (
+            <SortableContext
+              items={sortedTasks.map(task => task.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <AnimatePresence>
+                {sortedTasks.map((task) => {
+                  const priority = PRIORITIES.find(p => p.value === task.priority);
+                  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <h3
-                        className={`text-lg font-semibold mb-1 ${
-                          task.completed
-                            ? 'line-through text-light-text-secondary dark:text-dark-text-secondary'
-                            : 'text-light-text dark:text-dark-text'
-                        }`}
-                      >
-                        {task.title}
-                      </h3>
-
-                      {task.description && (
-                        <p className="text-sm text-light-text-tertiary dark:text-dark-text-tertiary mb-3">
-                          {task.description}
-                        </p>
-                      )}
-
-                      {/* Meta Info */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        {/* Priority Badge */}
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${priority.color}`}>
-                          {priority.label}
-                        </span>
-
-                        {/* Due Date */}
-                        {task.dueDate && (
-                          <span className={`flex items-center space-x-1 space-x-reverse px-3 py-1 rounded-full text-xs font-medium ${
-                            isOverdue
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                          }`}>
-                            <CalendarIcon className="w-3 h-3" />
-                            <span>{new Date(task.dueDate).toLocaleDateString('fa-IR')}</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleEdit(task)}
-                        className="p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 transition-colors"
-                        title="ویرایش"
-                      >
-                        <PencilIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(task.id, task.title)}
-                        className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors"
-                        title="حذف"
-                      >
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        )}
-      </div>
+                  return (
+                    <SortableTaskItem
+                      key={task.id}
+                      task={task}
+                      priority={priority}
+                      isOverdue={isOverdue}
+                      onToggleComplete={toggleTaskComplete}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  );
+                })}
+              </AnimatePresence>
+            </SortableContext>
+          )}
+        </div>
+      </DndContext>
     </div>
   );
 };
