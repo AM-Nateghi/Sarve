@@ -22,9 +22,6 @@
 
     <!-- Swagger for API documentation -->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.8.1" />
-
-    <!-- Google Generative AI (Gemini) -->
-    <PackageReference Include="Google.GenerativeAI" Version="1.0.0-beta" />
   </ItemGroup>
 
 </Project>

@@ -6,11 +6,8 @@ export const useExtractTasks = () => {
   return useMutation({
     mutationFn: aiApi.extractTasks,
     onError: (error) => {
-      if (error.response?.status === 429) {
-        toast.error('محدودیت تعداد درخواست. لطفاً یک دقیقه صبر کنید.');
-      } else {
-        toast.error(error.response?.data?.message || 'خطا در استخراج وظایف');
-      }
+      const errorMessage = error.message || 'خطا در استخراج وظایف';
+      toast.error(errorMessage);
     },
   });
 };
@@ -20,11 +17,8 @@ export const useGenerateReport = () => {
     mutationFn: ({ tasks, startDate, endDate }) =>
       aiApi.generateReport(tasks, startDate, endDate),
     onError: (error) => {
-      if (error.response?.status === 429) {
-        toast.error('محدودیت تعداد درخواست. لطفاً یک دقیقه صبر کنید.');
-      } else {
-        toast.error(error.response?.data?.message || 'خطا در تولید گزارش');
-      }
+      const errorMessage = error.message || 'خطا در تولید گزارش';
+      toast.error(errorMessage);
     },
   });
 };
