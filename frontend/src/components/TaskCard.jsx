@@ -7,7 +7,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid';
 import { format } from 'date-fns';
-import { fa } from 'date-fns/locale';
+import { faIR } from 'date-fns/locale';
 
 const priorityConfig = {
   1: { label: 'کم', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20' },
@@ -96,7 +96,7 @@ const TaskCard = ({ task, onClick, onToggle, labels = [] }) => {
                 <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                   <ClockIcon className="w-4 h-4" />
                   <span>
-                    {format(new Date(task.deadline), 'd MMM', { locale: fa })}
+                    {format(new Date(task.deadline), 'd MMM', { locale: faIR })}
                   </span>
                 </div>
               )}
