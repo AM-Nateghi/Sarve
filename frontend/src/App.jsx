@@ -30,12 +30,15 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  const { theme, setTheme } = useThemeStore();
+  const { theme, applyTheme, isDark } = useThemeStore();
 
-  // Load theme on mount
+  // Load and apply theme on mount
   useEffect(() => {
-    setTheme(theme);
-  }, []);
+    applyTheme(theme);
+  }, [theme, applyTheme]);
+
+  // Check if dark mode is active
+  const darkMode = isDark();
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -71,9 +74,9 @@ function App() {
             duration: 4000,
             className: 'font-estedad',
             style: {
-              background: theme === 'dark' ? '#1E293B' : '#FFFFFF',
-              color: theme === 'dark' ? '#F8FAFC' : '#111827',
-              border: `1px solid ${theme === 'dark' ? '#475569' : '#E5E7EB'}`,
+              background: darkMode ? '#1E293B' : '#FFFFFF',
+              color: darkMode ? '#F8FAFC' : '#111827',
+              border: `1px solid ${darkMode ? '#475569' : '#E5E7EB'}`,
             },
             success: {
               iconTheme: {

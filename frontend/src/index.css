@@ -140,6 +140,10 @@
 /* ========================================
    React DatePicker Styling
    ======================================== */
+.datepicker-custom .react-datepicker-popper {
+  z-index: 100 !important;
+}
+
 .datepicker-custom .react-datepicker {
   @apply bg-white dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border rounded-xl shadow-xl font-estedad;
 }

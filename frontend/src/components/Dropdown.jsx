@@ -31,7 +31,7 @@ const Dropdown = ({ value, onChange, options, placeholder = 'انتخاب کنی
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border shadow-lg focus:outline-none">
+            <Listbox.Options className="absolute z-[100] mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border shadow-lg focus:outline-none">
               {options.map((option) => (
                 <Listbox.Option
                   key={option.value}
