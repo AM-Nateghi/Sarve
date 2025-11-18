@@ -24,7 +24,7 @@ import { AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import DatePicker from '../components/DatePicker';
-import Dropdown from '../components/Dropdown';
+import CustomDropdown from '../components/CustomDropdown';
 import SortableTaskItem from '../components/SortableTaskItem';
 import LabelPicker from '../components/LabelPicker';
 import TaskSkeleton from '../components/TaskSkeleton';
@@ -219,7 +219,7 @@ const Tasks = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Priority */}
-        <Dropdown
+        <CustomDropdown
           label="اولویت"
           value={formData.priority}
           onChange={(value) => setFormData({ ...formData, priority: value })}
@@ -354,7 +354,7 @@ const Tasks = () => {
 
           {/* Sort */}
           <div className="sm:w-40">
-            <Dropdown
+            <CustomDropdown
               value={sortBy}
               onChange={setSortBy}
               options={SORT_OPTIONS}

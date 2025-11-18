@@ -31,20 +31,10 @@ const DatePicker = ({ selected, onChange, placeholder = 'انتخاب تاریخ
         minDate={minDate}
         maxDate={maxDate}
         placeholderText={placeholder}
-        calendarStartDay={6} // Start week on Saturday (Persian calendar style)
+        calendarStartDay={6}
         showPopperArrow={false}
         popperClassName="datepicker-popper"
         wrapperClassName="w-full"
-        popperModifiers={[
-          {
-            name: 'zIndex',
-            enabled: true,
-            phase: 'write',
-            fn({ state }) {
-              state.styles.popper.zIndex = 100;
-            },
-          },
-        ]}
       />
     </div>
   );

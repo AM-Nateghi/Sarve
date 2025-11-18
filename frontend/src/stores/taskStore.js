@@ -1,9 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
-const useTaskStore = create(
-  persist(
-    (set, get) => ({
+const useTaskStore = create((set, get) => ({
   // لیست وظایف
   tasks: [],
 
@@ -242,12 +239,6 @@ const useTaskStore = create(
   getCompletedTasks: () => {
     return get().tasks.filter((task) => task.completed);
   },
-    }),
-    {
-      name: 'sarve-task-storage', // نام key در localStorage
-      partialPersist: true, // فقط state هایی که می‌خواهیم persist شوند
-    }
-  )
-);
+}));
 
 export default useTaskStore;
