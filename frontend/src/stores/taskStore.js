@@ -64,6 +64,17 @@ const useTaskStore = create((set, get) => ({
     }));
   },
 
+  // تغییر ترتیب وظایف (برای Drag & Drop)
+  reorderTasks: (taskIds) => {
+    set((state) => {
+      const tasksMap = new Map(state.tasks.map(task => [task.id, task]));
+      const reorderedTasks = taskIds.map(id => tasksMap.get(id)).filter(Boolean);
+      // اضافه کردن وظایفی که در لیست جدید نیستند (مثلاً فیلتر شده‌ها)
+      const remainingTasks = state.tasks.filter(task => !taskIds.includes(task.id));
+      return { tasks: [...reorderedTasks, ...remainingTasks] };
+    });
+  },
+
   // تنظیم وظیفه در حال ویرایش
   setEditingTask: (task) => {
     set({ editingTask: task });
