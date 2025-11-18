@@ -1,45 +1,39 @@
-using LiteDB;
 using Sarve.Backend.Models;
 
 namespace Sarve.Backend.Data.Repositories
 {
     public class LabelRepository
     {
-        private readonly LiteDatabase _db;
-        private readonly ILiteCollection<Label> _labels;
+        private readonly LiteDbContext _context;
 
-        public LabelRepository(LiteDatabase db)
+        public LabelRepository(LiteDbContext context)
         {
-            _db = db;
-            _labels = _db.GetCollection<Label>("labels");
-
-            // ایجاد Index
-            _labels.EnsureIndex(x => x.UserId);
+            _context = context;
         }
 
         public IEnumerable<Label> GetByUserId(string userId)
         {
-            return _labels.Find(x => x.UserId == userId).OrderBy(x => x.Name);
+            return _context.Labels.Find(x => x.UserId == userId).OrderBy(x => x.Name);
         }
 
         public Label? GetById(string id)
         {
-            return _labels.FindById(id);
+            return _context.Labels.FindById(id);
         }
 
         public void Insert(Label label)
         {
-            _labels.Insert(label);
+            _context.Labels.Insert(label);
         }
 
         public bool Update(Label label)
         {
-            return _labels.Update(label);
+            return _context.Labels.Update(label);
         }
 
         public bool Delete(string id)
         {
-            return _labels.Delete(id);
+            return _context.Labels.Delete(id);
         }
     }
 }
