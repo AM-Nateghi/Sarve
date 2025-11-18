@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import authService from '../services/authService';
 import useAuthStore from '../stores/authStore';
 import { validateEmail, validateIranPhone, validatePassword, validateName, normalizeIranPhone } from '../utils/validators';
+import PageTransition from '../components/PageTransition';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -86,7 +87,8 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-light-bg dark:bg-dark-bg px-4 py-12">
+    <PageTransition>
+      <div className="min-h-screen flex items-center justify-center bg-light-bg dark:bg-dark-bg px-4 py-12">
       <div className="max-w-md w-full space-y-8">
         {/* Logo */}
         <div className="text-center">
@@ -232,6 +234,7 @@ const Register = () => {
         </div>
       </div>
     </div>
+    </PageTransition>
   );
 };
 
