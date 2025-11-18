@@ -123,6 +123,17 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-light-text-tertiary dark:bg-dark-text-tertiary;
   }
+
+  /* Input styles - No ring, soft border */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  textarea,
+  select {
+    @apply focus:outline-none focus:ring-0 focus:border-primary-400 dark:focus:border-primary-500;
+    @apply transition-colors duration-200;
+  }
 }
 
 @layer utilities {

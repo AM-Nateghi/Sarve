@@ -7,7 +7,6 @@ import {
   ClockIcon,
   XMarkIcon,
   SparklesIcon,
-  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import TaskCard from '../components/TaskCard';
@@ -17,7 +16,6 @@ import DatePicker from '../components/DatePicker';
 import CustomDropdown from '../components/CustomDropdown';
 import LabelPicker from '../components/LabelPicker';
 import AITaskExtractor from '../components/AITaskExtractor';
-import SmartReport from '../components/SmartReport';
 import TaskSkeleton from '../components/TaskSkeleton';
 import {
   useTasks,
@@ -56,7 +54,6 @@ const Tasks = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [showAIExtractor, setShowAIExtractor] = useState(false);
-  const [showSmartReport, setShowSmartReport] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -176,18 +173,6 @@ const Tasks = () => {
     }
   };
 
-  // Handle AI extracted tasks
-  const handleTasksExtracted = async (extractedTasks) => {
-    for (const task of extractedTasks) {
-      try {
-        await createTaskMutation.mutateAsync(task);
-      } catch (error) {
-        console.error('Error creating extracted task:', error);
-      }
-    }
-    setShowAIExtractor(false);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -204,15 +189,8 @@ const Tasks = () => {
               </p>
             </div>
 
-            {/* Desktop AI Buttons */}
+            {/* Desktop AI Button */}
             <div className="hidden sm:flex items-center gap-2">
-              <button
-                onClick={() => setShowSmartReport(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-medium transition-all shadow-md hover:shadow-lg"
-              >
-                <ChartBarIcon className="w-5 h-5" />
-                <span className="hidden md:inline">گزارش</span>
-              </button>
               <button
                 onClick={() => setShowAIExtractor(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all shadow-md hover:shadow-lg"
@@ -346,26 +324,6 @@ const Tasks = () => {
       {/* FAB - Add Task */}
       <FloatingActionButton onClick={openNewTaskModal} label="وظیفه جدید" />
 
-      {/* Mobile AI Buttons */}
-      <div className="sm:hidden fixed bottom-20 right-6 flex flex-col gap-3 z-40">
-        <motion.button
-          onClick={() => setShowSmartReport(true)}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full shadow-lg flex items-center justify-center"
-        >
-          <ChartBarIcon className="w-6 h-6 text-white" />
-        </motion.button>
-        <motion.button
-          onClick={() => setShowAIExtractor(true)}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full shadow-lg flex items-center justify-center"
-        >
-          <SparklesIcon className="w-6 h-6 text-white" />
-        </motion.button>
-      </div>
-
       {/* Task Modal */}
       <Modal
         isOpen={isModalOpen}
@@ -471,24 +429,10 @@ const Tasks = () => {
       </Modal>
 
       {/* AI Task Extractor */}
-      <AnimatePresence>
-        {showAIExtractor && (
-          <AITaskExtractor
-            onClose={() => setShowAIExtractor(false)}
-            onTasksExtracted={handleTasksExtracted}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Smart Report */}
-      <AnimatePresence>
-        {showSmartReport && (
-          <SmartReport
-            tasks={tasks}
-            onClose={() => setShowSmartReport(false)}
-          />
-        )}
-      </AnimatePresence>
+      <AITaskExtractor
+        isOpen={showAIExtractor}
+        onClose={() => setShowAIExtractor(false)}
+      />
     </div>
   );
 };

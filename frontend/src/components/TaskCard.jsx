@@ -23,106 +23,93 @@ const TaskCard = ({ task, onClick, onToggle, labels = [] }) => {
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.2 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.15 }}
       className="group"
     >
       <div
         onClick={onClick}
         className={`
-          relative p-4 rounded-2xl cursor-pointer
-          bg-white dark:bg-gray-800
-          shadow-sm hover:shadow-md active:shadow-sm
-          transition-all duration-200
-          ${task.isCompleted ? 'opacity-60' : ''}
+          relative p-3 sm:p-3.5 rounded-xl cursor-pointer
+          bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700
+          hover:border-gray-200 dark:hover:border-gray-600
+          active:border-gray-300 dark:active:border-gray-500
+          transition-all duration-150
+          ${task.isCompleted ? 'opacity-50' : ''}
         `}
       >
         {/* Priority indicator */}
-        <div className={`absolute top-0 right-0 w-1 h-full rounded-r-2xl ${priority.bg}`} />
+        <div className={`absolute top-0 right-0 w-1 h-full rounded-r-xl ${priority.bg}`} />
 
-        <div className="flex items-start gap-3 pr-2">
+        <div className="flex items-center gap-2.5 pr-2">
           {/* Checkbox */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               onToggle?.();
             }}
-            className="flex-shrink-0 mt-0.5"
+            className="flex-shrink-0"
           >
             {task.isCompleted ? (
-              <CheckCircleIconSolid className="w-6 h-6 text-primary-500" />
+              <CheckCircleIconSolid className="w-5 h-5 text-primary-500" />
             ) : (
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <CheckCircleIcon className="w-6 h-6 text-gray-300 dark:text-gray-600 hover:text-primary-400 transition-colors" />
-              </motion.div>
+              <CheckCircleIcon className="w-5 h-5 text-gray-300 dark:text-gray-600 hover:text-primary-400 transition-colors" />
             )}
           </button>
 
           {/* Content */}
-          <div className="flex-1 min-w-0 space-y-2">
-            {/* Title */}
-            <h3
-              className={`
-                font-semibold text-gray-900 dark:text-white
-                ${task.isCompleted ? 'line-through text-gray-400 dark:text-gray-500' : ''}
-              `}
-            >
-              {task.title}
-            </h3>
+          <div className="flex-1 min-w-0">
+            {/* Title & Meta in one line */}
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <h3
+                className={`
+                  text-sm font-medium text-gray-900 dark:text-white truncate
+                  ${task.isCompleted ? 'line-through text-gray-400 dark:text-gray-500' : ''}
+                `}
+              >
+                {task.title}
+              </h3>
 
-            {/* Description */}
-            {task.description && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                {task.description}
-              </p>
-            )}
+              {/* Priority badge - compact */}
+              <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded ${priority.bg} ${priority.color} font-medium`}>
+                {priority.label}
+              </span>
+            </div>
 
-            {/* Meta info */}
-            <div className="flex flex-wrap items-center gap-3 text-xs">
-              {/* Priority */}
-              <div className={`flex items-center gap-1 ${priority.color}`}>
-                <FlagIcon className="w-4 h-4" />
-                <span className="font-medium">{priority.label}</span>
-              </div>
-
+            {/* Meta info - compact */}
+            <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
               {/* Deadline */}
               {task.deadline && (
-                <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-                  <ClockIcon className="w-4 h-4" />
-                  <span>
-                    {format(new Date(task.deadline), 'd MMM', { locale: faIR })}
-                  </span>
+                <div className="flex items-center gap-0.5">
+                  <ClockIcon className="w-3 h-3" />
+                  <span>{format(new Date(task.deadline), 'd MMM', { locale: faIR })}</span>
                 </div>
               )}
 
-              {/* Labels */}
+              {/* Labels - very compact */}
               {taskLabels.length > 0 && (
-                <div className="flex items-center gap-1">
-                  {taskLabels.slice(0, 2).map((label) => (
-                    <span
-                      key={label.id}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-                      style={{
-                        backgroundColor: `${label.color}20`,
-                        color: label.color,
-                      }}
-                    >
-                      <TagIcon className="w-3 h-3" />
-                      {label.name}
-                    </span>
-                  ))}
-                  {taskLabels.length > 2 && (
-                    <span className="text-gray-400 text-xs">
-                      +{taskLabels.length - 2}
+                <>
+                  {taskLabels.length <= 2 ? (
+                    taskLabels.map((label) => (
+                      <span
+                        key={label.id}
+                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-medium"
+                        style={{
+                          backgroundColor: `${label.color}15`,
+                          color: label.color,
+                        }}
+                      >
+                        {label.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[10px]">
+                      <TagIcon className="w-3 h-3 inline" /> {taskLabels.length}
                     </span>
                   )}
-                </div>
+                </>
               )}
             </div>
           </div>
