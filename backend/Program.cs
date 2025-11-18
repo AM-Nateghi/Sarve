@@ -41,6 +41,9 @@ builder.Services.AddScoped<LabelRepository>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<PasswordService>();
 
+// AI Services (Singleton for rate limiting tracking)
+builder.Services.AddSingleton<GeminiService>();
+
 // JWT Authentication
 var jwtSecret = builder.Configuration["JwtSettings:SecretKey"]
     ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY")

@@ -6,7 +6,7 @@ import {
   CheckCircleIcon,
   ClockIcon
 } from '@heroicons/react/24/outline';
-import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
+import { CheckCircleIcon as CheckCircleSolid, SparklesIcon, DocumentChartBarIcon } from '@heroicons/react/24/solid';
 import {
   DndContext,
   closestCenter,
@@ -27,6 +27,8 @@ import CustomDropdown from '../components/CustomDropdown';
 import SortableTaskItem from '../components/SortableTaskItem';
 import LabelPicker from '../components/LabelPicker';
 import TaskSkeleton from '../components/TaskSkeleton';
+import AITaskExtractor from '../components/AITaskExtractor';
+import SmartReport from '../components/SmartReport';
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useToggleTask } from '../hooks/useTasks';
 
 const PRIORITIES = [
@@ -61,6 +63,8 @@ const Tasks = () => {
   const [sortBy, setSortBy] = useState('date');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [showAIExtractor, setShowAIExtractor] = useState(false);
+  const [showSmartReport, setShowSmartReport] = useState(false);
 
   // تنظیمات Drag & Drop
   const sensors = useSensors(
@@ -288,13 +292,31 @@ const Tasks = () => {
               مدیریت و پیگیری وظایف روزانه
             </p>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center space-x-2 space-x-reverse bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl"
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span>وظیفه جدید</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowSmartReport(true)}
+              className="flex items-center space-x-2 space-x-reverse bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium py-3 px-4 sm:px-6 rounded-xl transition-all shadow-lg hover:shadow-xl"
+              title="گزارش هوشمند"
+            >
+              <DocumentChartBarIcon className="w-5 h-5" />
+              <span className="hidden sm:inline">گزارش AI</span>
+            </button>
+            <button
+              onClick={() => setShowAIExtractor(true)}
+              className="flex items-center space-x-2 space-x-reverse bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium py-3 px-4 sm:px-6 rounded-xl transition-all shadow-lg hover:shadow-xl"
+              title="استخراج هوشمند وظایف"
+            >
+              <SparklesIcon className="w-5 h-5" />
+              <span className="hidden sm:inline">AI</span>
+            </button>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center space-x-2 space-x-reverse bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl"
+            >
+              <PlusIcon className="w-5 h-5" />
+              <span>وظیفه جدید</span>
+            </button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -440,6 +462,25 @@ const Tasks = () => {
           )}
         </div>
       </DndContext>
+
+      {/* AI Modals */}
+      <AnimatePresence>
+        {showAIExtractor && (
+          <AITaskExtractor
+            isOpen={showAIExtractor}
+            onClose={() => setShowAIExtractor(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showSmartReport && (
+          <SmartReport
+            isOpen={showSmartReport}
+            onClose={() => setShowSmartReport(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
