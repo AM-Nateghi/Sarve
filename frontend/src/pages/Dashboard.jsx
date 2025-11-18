@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ClipboardDocumentCheckIcon,
@@ -13,20 +13,27 @@ import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { getRandomMessage } from '../utils/helpers';
 import { MOTIVATIONAL_MESSAGES } from '../utils/constants';
 import useAuthStore from '../stores/authStore';
-import useTaskStore from '../stores/taskStore';
+import { useTasks } from '../hooks/useTasks';
 import { motion } from 'framer-motion';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
-  const { getTodayTasks, getTasks } = useTaskStore();
+  const { data: allTasks = [], isLoading } = useTasks();
   const [displayedText, setDisplayedText] = useState('');
   const [isTypingComplete, setIsTypingComplete] = useState(false);
   const motivationalMessage = useState(() => getRandomMessage(MOTIVATIONAL_MESSAGES))[0];
 
-  const todayTasks = getTodayTasks();
-  const allTasks = getTasks();
-  const completedToday = todayTasks.filter(t => t.completed).length;
-  const allCompleted = allTasks.filter(t => t.completed).length;
+  // محاسبه وظایف امروز
+  const todayTasks = useMemo(() => {
+    const today = new Date().toDateString();
+    return allTasks.filter((task) => {
+      const taskDate = task.deadline ? new Date(task.deadline).toDateString() : null;
+      return taskDate === today;
+    });
+  }, [allTasks]);
+
+  const completedToday = todayTasks.filter(t => t.isCompleted).length;
+  const allCompleted = allTasks.filter(t => t.isCompleted).length;
   const productivityRate = todayTasks.length > 0 ? Math.round((completedToday / todayTasks.length) * 100) : 0;
 
   // Calculate streak (consecutive days with completed tasks)
@@ -221,26 +228,26 @@ const Dashboard = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.7 + index * 0.05 }}
                 className={`flex items-center space-x-3 space-x-reverse p-4 rounded-lg border transition-all hover:shadow-md ${
-                  task.completed
+                  task.isCompleted
                     ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800/50'
                     : 'bg-light-bg-secondary dark:bg-dark-bg border-light-border dark:border-dark-border hover:border-primary-300 dark:hover:border-primary-700'
                 }`}
               >
-                {task.completed ? (
+                {task.isCompleted ? (
                   <CheckCircleIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
                 ) : (
                   <div className="w-5 h-5 rounded-full border-2 border-light-border dark:border-dark-border flex-shrink-0" />
                 )}
                 <span
                   className={`flex-1 ${
-                    task.completed
+                    task.isCompleted
                       ? 'line-through text-light-text-secondary dark:text-dark-text-secondary'
                       : 'text-light-text dark:text-dark-text font-medium'
                   }`}
                 >
                   {task.title}
                 </span>
-                {task.priority > 2 && !task.completed && (
+                {task.priority > 2 && !task.isCompleted && (
                   <span className="text-xs px-2 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 font-medium">
                     فوری
                   </span>
